@@ -5,13 +5,14 @@ import os
 
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 800
-SCREEN_TITLE = "Sprites and Bullets Enemy Aims Example"
+SCREEN_TITLE = "Turret"
 BULLET_SPEED = 64
 mouse_x = 0
 mouse_y = 0
 GROUND = 60
 TANK_VELOCITY = 1
 FPS = 60
+BULLET_PENETRA = 2  # armor penetration
 
 
 class MyGame(arcade.Window):
@@ -44,13 +45,12 @@ class MyGame(arcade.Window):
 
         pillbox = arcade.Sprite("pillbox.png", 1)
         pillbox.center_x = SCREEN_WIDTH/2
-        pillbox.center_y = pillbox._height/2
+        pillbox.center_y = pillbox.height/2
         self.objects.append(pillbox)
 
         gun = arcade.Sprite("gun.png", 1)
         gun.center_x = SCREEN_WIDTH/2
-        gun.center_y = pillbox._height + 4/9 * gun._width
-        gun.angle = 180
+        gun.center_y = pillbox.height + 4/9 * gun.width
         self.guns.append(gun)
 
     def on_draw(self):
@@ -62,6 +62,9 @@ class MyGame(arcade.Window):
         self.bullet_list.draw()
         self.guns.draw()
         self.enemies.draw()
+        for enemy in self.enemies:
+            arcade.draw_text(str(enemy.hp), enemy.center_x, enemy.top + 12,
+                             arcade.color.FRENCH_WINE, 20)
 
     def on_update(self, delta_time):
         """The logic of game """
@@ -69,15 +72,16 @@ class MyGame(arcade.Window):
         self.frame_count += 1
 
         if self.frame_count % FPS*5 == 0:
-            Rand = random.choice([0, SCREEN_WIDTH])
-            if Rand == SCREEN_WIDTH:
+            rand = random.choice([0, SCREEN_WIDTH])
+            if rand == SCREEN_WIDTH:
                 tankette = arcade.Sprite("tankette.png", flipped_horizontally=True)
                 tankette.change_x = - TANK_VELOCITY
             else:
                 tankette = arcade.Sprite("tankette.png")
                 tankette.change_x = TANK_VELOCITY
-            tankette.center_x = Rand
-            tankette.top = GROUND + tankette._height/2
+            tankette.center_x = rand
+            tankette.top = GROUND + tankette.height/2
+            tankette.hp = 5
             self.enemies.append(tankette)
 
         for gun in self.guns:
@@ -85,8 +89,19 @@ class MyGame(arcade.Window):
             gun.angle = math.degrees(angle) - 90
 
         for bullet in self.bullet_list:
-            if bullet.top < 0 or bullet.top > SCREEN_HEIGHT or bullet.right < 0 or bullet.right > SCREEN_WIDTH:
+            hit_list = arcade.check_for_collision_with_list(bullet, self.enemies)
+            for enemy in hit_list:
+                enemy.hp -= 1
+                bullet.hp -= 1
+
+            if (bullet.top < 0 or bullet.bottom > SCREEN_HEIGHT
+                    or bullet.right < 0 or bullet.left > SCREEN_WIDTH
+                    or bullet.hp <= 0):
                 bullet.remove_from_sprite_lists()
+
+        for enemy in self.enemies:
+            if enemy.hp <= 0:
+                enemy.remove_from_sprite_lists()
 
         self.enemies.update()
         self.bullet_list.update()
@@ -106,6 +121,7 @@ class MyGame(arcade.Window):
             bullet.center_y = gun.center_y
             angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
 
+            bullet.hp = BULLET_PENETRA
             bullet.angle = math.degrees(angle)
             bullet.change_x = math.cos(angle) * BULLET_SPEED
             bullet.change_y = math.sin(angle) * BULLET_SPEED
