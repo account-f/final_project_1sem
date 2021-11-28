@@ -24,13 +24,14 @@ class MyGame(arcade.Window):
         file_path = os.path.dirname(os.path.abspath(__file__))
         os.chdir(file_path)
 
+        self.game_over = False
         arcade.set_background_color((255, 255, 255))
 
         self.frame_count = 0
 
         self.enemies = None
         self.bullet_list = None
-        self.gun = None
+        self.enemy_bullet_list = None
         self.pillbox = None
         self.objects = None
         self.guns = None
@@ -40,12 +41,14 @@ class MyGame(arcade.Window):
 
         self.enemies = arcade.SpriteList()
         self.bullet_list = arcade.SpriteList()
+        self.enemy_bullet_list = arcade.SpriteList()
         self.objects = arcade.SpriteList()
         self.guns = arcade.SpriteList()
 
         pillbox = arcade.Sprite("pillbox.png", 1)
         pillbox.center_x = SCREEN_WIDTH/2
         pillbox.center_y = pillbox.height/2
+        pillbox.hp = 40
         self.objects.append(pillbox)
 
         gun = arcade.Sprite("gun.png", 1)
@@ -57,54 +60,76 @@ class MyGame(arcade.Window):
         """Render the screen """
 
         arcade.start_render()
-        arcade.draw_rectangle_filled(0, 0, SCREEN_WIDTH*2, GROUND, arcade.csscolor.GREEN)
+        arcade.draw_rectangle_filled(0, 0, SCREEN_WIDTH*2, GROUND, arcade.color.EARTH_YELLOW)
         self.objects.draw()
         self.bullet_list.draw()
+        self.enemy_bullet_list.draw()
         self.guns.draw()
         self.enemies.draw()
         for enemy in self.enemies:
-            arcade.draw_text(str(enemy.hp), enemy.center_x, enemy.top + 12,
-                             arcade.color.FRENCH_WINE, 20)
+            arcade.draw_text(str(enemy.hp), enemy.center_x - enemy.width/2, enemy.top + 12,
+                             arcade.color.FRENCH_WINE, 20, width=enemy.width, align="center")
+        for object in self.objects:
+            arcade.draw_text(str(object.hp), object.center_x - object.width/2, object.top + 80,
+                             arcade.color.FRENCH_WINE, 25, width=object.width, align="center")
 
     def on_update(self, delta_time):
         """The logic of game """
 
-        self.frame_count += 1
+        if not self.game_over:
+            self.frame_count += 1
 
-        if self.frame_count % FPS*5 == 0:
-            rand = random.choice([0, SCREEN_WIDTH])
-            if rand == SCREEN_WIDTH:
-                tankette = arcade.Sprite("tankette.png", flipped_horizontally=True)
-                tankette.change_x = - TANK_VELOCITY
-            else:
-                tankette = arcade.Sprite("tankette.png")
-                tankette.change_x = TANK_VELOCITY
-            tankette.center_x = rand
-            tankette.top = GROUND + tankette.height/2
-            tankette.hp = 5
-            self.enemies.append(tankette)
+            if self.frame_count % (FPS * 2) == 0:
+                direct = random.choice([1, -1])
+                if direct == -1:
+                    tankette = arcade.Sprite("tankette.png", flipped_horizontally=True)
+                else:
+                    tankette = arcade.Sprite("tankette.png")
+                tankette.direct = direct
+                tankette.change_x = direct * TANK_VELOCITY
+                tankette.center_x = SCREEN_WIDTH/2 - direct * (SCREEN_WIDTH/2 + tankette.width)
+                tankette.top = GROUND + tankette.height/2
+                tankette.hp = 5
+                tankette.recharge_time = 0
+                self.enemies.append(tankette)
 
-        for gun in self.guns:
-            angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
-            gun.angle = math.degrees(angle) - 90
+            for gun in self.guns:
+                angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
+                gun.angle = math.degrees(angle) - 90
 
-        for bullet in self.bullet_list:
-            hit_list = arcade.check_for_collision_with_list(bullet, self.enemies)
-            for enemy in hit_list:
-                enemy.hp -= 1
-                bullet.hp -= 1
+            for bullet in self.bullet_list:
+                hit_list = arcade.check_for_collision_with_list(bullet, self.enemies)
+                for enemy in hit_list:
+                    if bullet.hp > 0:
+                        enemy.hp -= 1
+                        bullet.hp -= 1
+                    else:
+                        bullet.remove_from_sprite_lists()
 
-            if (bullet.top < 0 or bullet.bottom > SCREEN_HEIGHT
-                    or bullet.right < 0 or bullet.left > SCREEN_WIDTH
-                    or bullet.hp <= 0):
-                bullet.remove_from_sprite_lists()
+                if (bullet.top < 0 or bullet.bottom > SCREEN_HEIGHT
+                        or bullet.right < 0 or bullet.left > SCREEN_WIDTH):
+                    bullet.remove_from_sprite_lists()
 
-        for enemy in self.enemies:
-            if enemy.hp <= 0:
-                enemy.remove_from_sprite_lists()
+            for object in self.objects:
+                if self.enemy_bullet_list is not None:
+                    hit_list = arcade.check_for_collision_with_list(object, self.enemy_bullet_list)
+                    for bullet in hit_list:
+                        object.hp -= 2
+                        bullet.remove_from_sprite_lists()
+                    if object.hp <= 0:
+                        object.texture = arcade.load_texture("pillbox_destructed.png")
+                        self.game_over = True
 
-        self.enemies.update()
-        self.bullet_list.update()
+            for enemy in self.enemies:
+                if enemy.hp <= 0:
+                    enemy.remove_from_sprite_lists()
+                elif abs(enemy.center_x - SCREEN_WIDTH/2) < SCREEN_WIDTH/6:
+                    self.fire(enemy)
+                    enemy.change_x = 0
+
+            self.enemies.update()
+            self.bullet_list.update()
+            self.enemy_bullet_list.update()
 
     def on_mouse_motion(self, x, y, delta_x, delta_y):
         """ Called whenever the mouse moves """
@@ -127,6 +152,17 @@ class MyGame(arcade.Window):
             bullet.change_y = math.sin(angle) * BULLET_SPEED
 
             self.bullet_list.append(bullet)
+
+    def fire(self, enemy):
+        if enemy.recharge_time == 0:
+            bullet = arcade.Sprite("bullet.png", 1)
+            bullet.center_x = enemy.center_x
+            bullet.center_y = enemy.center_y
+            bullet.change_x = BULLET_SPEED * enemy.direct
+            enemy.recharge_time = 75
+            self.enemy_bullet_list.append(bullet)
+        else:
+            enemy.recharge_time -= 1
 
 
 def main():
