@@ -50,13 +50,13 @@ class MyGame(arcade.Window):
         self.guns = arcade.SpriteList()
         self.booms = arcade.SpriteList()
 
-        pillbox = arcade.Sprite("pillbox.png", 1)
+        pillbox = arcade.Sprite("pictures/pillbox.png", 1)
         pillbox.center_x = SCREEN_WIDTH/2
         pillbox.center_y = pillbox.height/2
         pillbox.hp = 40
         self.objects.append(pillbox)
 
-        gun = arcade.Sprite("gun.png", 1)
+        gun = arcade.Sprite("pictures/gun.png", 1)
         gun.center_x = SCREEN_WIDTH/2
         gun.center_y = pillbox.height + 4/9 * gun.width
         self.guns.append(gun)
@@ -91,9 +91,9 @@ class MyGame(arcade.Window):
                 # tankette spawn: спавн танкетки
                 direct = random.choice([1, -1])
                 if direct == -1:
-                    tankette = arcade.Sprite("tankette.png", flipped_horizontally=True)
+                    tankette = arcade.Sprite("pictures/tankette.png", flipped_horizontally=True)
                 else:
-                    tankette = arcade.Sprite("tankette.png")
+                    tankette = arcade.Sprite("pictures/tankette.png")
                 tankette.direct = direct
                 tankette.change_x = direct * TANK_VELOCITY
                 tankette.center_x = SCREEN_WIDTH/2 - direct * (SCREEN_WIDTH/2 + tankette.width)
@@ -105,7 +105,7 @@ class MyGame(arcade.Window):
             if self.frame_count % (FPS * 2) == 0:
                 # drone spawn: спавн дрона
                 direct = random.choice([1, -1])
-                drone = arcade.Sprite("drone.png")
+                drone = arcade.Sprite("pictures/drone.png")
                 drone.center_x = SCREEN_WIDTH/2 - direct * (SCREEN_WIDTH/2 + drone.width)
                 drone.top = random.randint(SCREEN_HEIGHT//2, SCREEN_HEIGHT)
                 angle = math.atan2(drone.center_y - self.objects[0].center_y, drone.center_x - self.objects[0].center_x)
@@ -143,7 +143,7 @@ class MyGame(arcade.Window):
                         object.hp -= 2
                         bullet.remove_from_sprite_lists()
                     if object.hp <= 0:
-                        object.texture = arcade.load_texture("pillbox_destructed.png")
+                        object.texture = arcade.load_texture("pictures/pillbox_destructed.png")
                         self.game_over = True
 
             for enemy in self.ground_enemies:
@@ -167,7 +167,7 @@ class MyGame(arcade.Window):
                 boom.count += 1
                 if boom.count % FPB == 0:
                     # updates every FPB frames
-                    file = "boom" + str(boom.count // FPB) + ".png"
+                    file = "pictures/boom" + str(boom.count // FPB) + ".png"
                     if os.path.exists(file):
                         # file named as boom1, boom2 etc; this checks existing in agreement with boom.count
                         boom.texture = arcade.load_texture(file)
@@ -206,7 +206,7 @@ class MyGame(arcade.Window):
     def fire(self, enemy):
         """ Makes enemy firing: creates bullets if enemy is aimed and keep aiming if not """
         if enemy.recharge_time == 0:
-            bullet = arcade.Sprite("bullet.png", 1)
+            bullet = arcade.Sprite("pictures/bullet.png", 1)
             bullet.center_x = enemy.center_x
             bullet.center_y = enemy.center_y
             bullet.change_x = BULLET_SPEED * enemy.direct
@@ -217,7 +217,7 @@ class MyGame(arcade.Window):
 
     def create_boom(self, x, y, Vx, Vy):
         """ Creates an explosion. boom.count helps for switching frames """
-        boom = arcade.Sprite("boom1.png")
+        boom = arcade.Sprite("pictures/boom1.png")
         boom.center_x = x + Vx
         boom.center_y = y + Vy
         boom.change_x = Vx/3  # keeps moving
