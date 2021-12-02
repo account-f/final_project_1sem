@@ -130,6 +130,7 @@ class MyGame(arcade.Window):
                         self.game_over = True
 
             for enemy in self.ground_enemies:
+                enemy.time += 1
                 if enemy.hp <= 0:
                     enemy.remove_from_sprite_lists()
                 else:
@@ -137,12 +138,15 @@ class MyGame(arcade.Window):
                     if enemy.size == 0 and distance < SCREEN_WIDTH/6:
                         self.fire(enemy)
                         enemy.change_x = 0
-                    if enemy.size == 1 and distance < SCREEN_WIDTH/5:
+                    elif enemy.size == 1 and distance < SCREEN_WIDTH/5:
                         self.fire(enemy)
                         enemy.change_x = 0
-                    if enemy.size == 2 and distance < SCREEN_WIDTH/4:
+                    elif enemy.size == 2 and distance < SCREEN_WIDTH/4:
                         self.fire(enemy)
                         enemy.change_x = 0
+                    else:
+                        if enemy.time % 5 == 0:
+                            self.next_frame(enemy)
 
             for enemy in self.enemy_kamikaze:
                 if enemy.hp <= 0:
@@ -237,12 +241,12 @@ class MyGame(arcade.Window):
         """
         if self.frame_count % (FPS * frequency) == 0:
             direct = random.choice([1, -1])
-            if direct == -1:
-                tankette = arcade.Sprite("pictures/" + str(size) + "_tankette.png", flipped_horizontally=True)
-            else:
-                tankette = arcade.Sprite("pictures/" + str(size) + "_tankette.png")
+            file = "pictures/" + str(size) + "_tankette 0 .png"
+            tankette = arcade.Sprite(file, flipped_horizontally=bool(abs(direct-1)/2))
+            tankette.file = file
             tankette.size = size
             tankette.direct = direct
+            tankette.time = 0  # initial existing time
             tankette.change_x = direct * TANKETTE_VELOCITIES[size]
             tankette.center_x = SCREEN_WIDTH/2 - direct * (SCREEN_WIDTH/2 + tankette.width)
             tankette.bottom = GROUND/2 - 4
@@ -270,6 +274,19 @@ class MyGame(arcade.Window):
             drone.change_y = - DRONE_VELOCITY * math.sin(angle)
             drone.hp = 1
             self.enemy_kamikaze.append(drone)
+
+    def next_frame(self, object, frames=2):
+        """
+        Makes animation. Takes info about current frame from filename.
+        Changes texture by changing number of frame in filename.
+        :param object: object with animation
+        :param frames: number of frames of animation
+        """
+        number = int(object.file.split(" ")[1])
+        if number + 1 == frames:
+            number = -1
+        object.file = object.file.split(" ")[0] + " " + str((number + 1) % frames) + " " + object.file.split(" ")[2]
+        object.texture = arcade.load_texture(object.file, flipped_horizontally=bool(abs(object.direct-1)/2))
 
 
 def main():
