@@ -3,17 +3,22 @@ import random
 import math
 import os
 
+# экран:
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 800
 SCREEN_TITLE = "Turret"
-BULLET_SPEED = 64
 mouse_x = 0
 mouse_y = 0
-GROUND = 60
-TANKETTE_VELOCITIES = [2, 1.5, 1]
-DRONE_VELOCITY = 3
+GROUND = 60  # высота земли
+
+# объекты:
+BULLET_SPEED = 64  # полная скорость пули
+TANKETTE_VELOCITIES = [2, 1.5, 1]  # полные скорости танкеток (в соответствии с размером)
+DRONE_VELOCITY = 3  # полная скорость дрона
+BULLET_PENETRA = 2  # HP пули главной пушки
+
+# время:
 FPS = 60
-BULLET_PENETRA = 2  # armor penetration
 FPB = 4  # frames per one texture image of explosion
 
 
@@ -42,6 +47,7 @@ class MyGame(arcade.Window):
     def setup(self):
         """ Set up the game and initialize the variables """
 
+        # инициализация различных списков:
         self.ground_enemies = arcade.SpriteList()
         self.enemy_kamikaze = arcade.SpriteList()
         self.bullet_list = arcade.SpriteList()
@@ -50,12 +56,14 @@ class MyGame(arcade.Window):
         self.guns = arcade.SpriteList()
         self.booms = arcade.SpriteList()
 
+        # инициализация главного холма (с записью его расположения на экране и помещением в список objects):
         pillbox = arcade.Sprite("pictures/pillbox.png", 1)
         pillbox.center_x = SCREEN_WIDTH/2
         pillbox.center_y = pillbox.height/2
         pillbox.hp = 40
         self.objects.append(pillbox)
 
+        # инициализация главной пушки (с записью ее расположения на экране и помещением в список guns):
         gun = arcade.Sprite("pictures/gun.png", 1)
         gun.center_x = SCREEN_WIDTH/2
         gun.center_y = pillbox.height + 4/9 * gun.width
@@ -65,7 +73,11 @@ class MyGame(arcade.Window):
         """ Render the screen """
 
         arcade.start_render()
+
+        # рисование земли:
         arcade.draw_rectangle_filled(0, 0, SCREEN_WIDTH*2, GROUND, arcade.color.EARTH_YELLOW)
+
+        # рисование различных объектов:
         self.objects.draw()
         self.bullet_list.draw()
         self.enemy_bullet_list.draw()
@@ -73,8 +85,9 @@ class MyGame(arcade.Window):
         self.ground_enemies.draw()
         self.enemy_kamikaze.draw()
         self.booms.draw()
+
+        # рисование HP (health points) у наземных врагов и objects:
         for enemy in self.ground_enemies:
-            # рисование хп у наземных врагов
             arcade.draw_text(str(enemy.hp), enemy.center_x - enemy.width/2, enemy.top + 12,
                              arcade.color.FRENCH_WINE, 20, width=enemy.width, align="center")
         for object in self.objects:
@@ -82,24 +95,29 @@ class MyGame(arcade.Window):
                              arcade.color.FRENCH_WINE, 25, width=object.width, align="center")
 
     def on_update(self, delta_time):
-        """The logic of game """
+        """ Логика игры """
 
         if not self.game_over:
+            # обновление счетчика кадров:
             self.frame_count += 1
 
+            # регулярный спавн танкеток и дронов:
             self.default_tankette_spawn(frequency=3, size=0)
             self.default_tankette_spawn(frequency=6, size=1)
             self.default_tankette_spawn(frequency=11, size=2)
             self.default_drone_spawn(frequency=5)
 
+            # обновление угла наклона главной пушки:
             for gun in self.guns:
                 angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
                 gun.angle = math.degrees(angle) - 90
 
             for bullet in self.bullet_list:
-                # поражение целей игроком
+                # проверка поражений целей игроком:
                 hit_list = (arcade.check_for_collision_with_list(bullet, self.ground_enemies)
                             + arcade.check_for_collision_with_list(bullet, self.enemy_kamikaze))
+
+                # обновление HP у врагов и пули; ее удаление в случае отсутствия HP:
                 for enemy in hit_list:
                     if bullet.hp > 0:
                         enemy.hp -= 1
@@ -107,14 +125,14 @@ class MyGame(arcade.Window):
                     else:
                         bullet.remove_from_sprite_lists()
 
-                if (bullet.top < 0 or bullet.bottom > SCREEN_HEIGHT
+                # удаление пули при ее покидании экрана и/или отсутствии HP:
+                if (bullet.bottom < GROUND/2 or bullet.top > SCREEN_HEIGHT
                         or bullet.right < 0 or bullet.left > SCREEN_WIDTH
                         or bullet.hp <= 0):
-                    # вылет пули за пределы экрана
                     bullet.remove_from_sprite_lists()
 
             for object in self.objects:
-                # изменение текстуры дота по истечении хп
+                # обновление HP игрока и замена текстуры холма при его занулении:
                 if self.enemy_bullet_list is not None:
                     hit_list = arcade.check_for_collision_with_list(object, self.enemy_bullet_list)
                     for bullet in hit_list:
@@ -124,17 +142,26 @@ class MyGame(arcade.Window):
                             object.hp -= 2
                         if bullet.size == 2:
                             object.hp -= 4
+
+                        # зануление HP игрока при его возможном достижении отрицательного значения:
+                        if object.hp < 0:
+                            object.hp = 0
+
                         bullet.remove_from_sprite_lists()
-                    if object.hp <= 0:
+                    # замена картинки холма при достижении нулевого HP игроком:
+                    if object.hp == 0:
                         object.texture = arcade.load_texture("pictures/pillbox_destructed.png")
                         self.game_over = True
 
             for enemy in self.ground_enemies:
                 enemy.time += 1
                 if enemy.hp <= 0:
+                    # удаление танкетки при отсутствии у нее HP:
                     enemy.remove_from_sprite_lists()
                 else:
                     distance = abs(enemy.center_x - SCREEN_WIDTH / 2)
+
+                    # остановка танкетки на определенном расстоянии от холма (в зависимости от размера):
                     if enemy.size == 0 and distance < SCREEN_WIDTH/6:
                         self.fire(enemy)
                         enemy.change_x = 0
@@ -145,20 +172,24 @@ class MyGame(arcade.Window):
                         self.fire(enemy)
                         enemy.change_x = 0
                     else:
+                        # замена текстуры танкетки в нужный момент времени:
                         if enemy.time % 5 == 0:
                             self.next_frame(enemy)
 
             for enemy in self.enemy_kamikaze:
                 if enemy.hp <= 0:
+                    # удаление дрона с созданием на его месте взрыва:
                     self.create_boom(enemy.center_x, enemy.center_y, enemy.change_x, enemy.change_y)
                     enemy.remove_from_sprite_lists()
                 else:
+                    # проверка удара дроном по игроку с изменением HP игрока и занулением HP дрона:
                     hit_list = arcade.check_for_collision_with_list(enemy, self.objects)
                     for object in hit_list:
                         object.hp -= 10
                         enemy.hp = 0
 
             for boom in self.booms:
+                # анимация взрыва:
                 boom.count += 1
                 if boom.count % FPB == 0:
                     # updates every FPB frames
@@ -169,6 +200,7 @@ class MyGame(arcade.Window):
                     else:
                         boom.remove_from_sprite_lists()
 
+            # обновление объектов игры:
             self.ground_enemies.update()
             self.bullet_list.update()
             self.enemy_bullet_list.update()
@@ -176,16 +208,17 @@ class MyGame(arcade.Window):
             self.booms.update()
 
     def on_mouse_motion(self, x, y, delta_x, delta_y):
-        """ Called whenever the mouse moves """
+        """ Считывание расположения мыши игрока и изменение соответсвующих глобальных переменных """
         global mouse_x, mouse_y
         mouse_x = x
         mouse_y = y
 
     def on_mouse_press(self, x, y, button, modifiers):
-        """ Called whenever the mouse button is clicked """
+        """ Вызывается при нажатии мыши игроком """
 
         for gun in self.guns:
-            # creates bullet
+
+            # создание пули и помещении ее в список пуль игрока:
             bullet = arcade.Sprite(":resources:images/space_shooter/laserBlue01.png")
             bullet.center_x = gun.center_x
             bullet.center_y = gun.center_y
@@ -206,6 +239,8 @@ class MyGame(arcade.Window):
             bullet.center_x = enemy.center_x
             bullet.center_y = enemy.center_y
             bullet.change_x = BULLET_SPEED * enemy.direct
+
+            # обновление времени перезарядки для танкетки:
             if enemy.size == 0:
                 enemy.recharge_time = 30
             elif enemy.size == 1:
@@ -214,6 +249,7 @@ class MyGame(arcade.Window):
                 enemy.recharge_time = 75
             self.enemy_bullet_list.append(bullet)
         else:
+            # ход времени счетчика перезарядки:
             enemy.recharge_time -= 1
 
     def create_boom(self, x, y, Vx, Vy):
@@ -250,13 +286,18 @@ class MyGame(arcade.Window):
             tankette.change_x = direct * TANKETTE_VELOCITIES[size]
             tankette.center_x = SCREEN_WIDTH/2 - direct * (SCREEN_WIDTH/2 + tankette.width)
             tankette.bottom = GROUND/2 - 4
+
+            # установление HP танкетки согласно ее размеру:
             if size == 0:
                 tankette.hp = 3
             elif size == 1:
                 tankette.hp = 6
             elif size == 2:
                 tankette.hp = 10
+
             tankette.recharge_time = recharge_time
+
+            # добавление танкетки к соответствующему списку врагов:
             self.ground_enemies.append(tankette)
 
     def default_drone_spawn(self, frequency):
@@ -273,13 +314,15 @@ class MyGame(arcade.Window):
             drone.change_x = - DRONE_VELOCITY * math.cos(angle)
             drone.change_y = - DRONE_VELOCITY * math.sin(angle)
             drone.hp = 1
+
+            # добавление дрона к соответствующему списку врагов:
             self.enemy_kamikaze.append(drone)
 
     def next_frame(self, object, frames=2):
         """
-        Makes animation. Takes info about current frame from filename.
+        Анимирует объект путем регулярной замены его текстуры.
+        Takes info about current frame from filename.
         Changes texture by changing number of frame in filename.
-        :param object: object with animation
         :param frames: number of frames of animation
         """
         number = int(object.file.split(" ")[1])
