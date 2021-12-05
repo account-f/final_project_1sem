@@ -21,6 +21,12 @@ BULLET_PENETRA = 2  # HP пули главной пушки
 FPS = 60
 FPB = 4  # frames per one texture image of explosion
 
+# sounds:
+main_sound = arcade.load_sound("sounds/background.m4a", False)
+laser_sound = arcade.load_sound("sounds/laser.mp3", False)
+helicopter_crash = arcade.load_sound("sounds/helicopter_crash.mp3", False)
+end_of_game = arcade.load_sound("sounds/gameover.wav", False)
+
 
 class MyGame(arcade.Window):
     """ Main application class """
@@ -46,6 +52,8 @@ class MyGame(arcade.Window):
 
     def setup(self):
         """ Set up the game and initialize the variables """
+        # sound:
+        arcade.play_sound(main_sound, volume=0.2, looping=True)
 
         # инициализация различных списков:
         self.ground_enemies = arcade.SpriteList()
@@ -96,8 +104,8 @@ class MyGame(arcade.Window):
 
     def on_update(self, delta_time):
         """ Логика игры """
-
         if not self.game_over:
+
             # обновление счетчика кадров:
             self.frame_count += 1
 
@@ -151,6 +159,7 @@ class MyGame(arcade.Window):
                     # замена картинки холма при достижении нулевого HP игроком:
                     if object.hp == 0:
                         object.texture = arcade.load_texture("pictures/pillbox_destructed.png")
+                        arcade.play_sound(end_of_game, volume=0.9)
                         self.game_over = True
 
             for enemy in self.ground_enemies:
@@ -181,6 +190,9 @@ class MyGame(arcade.Window):
                     # удаление дрона с созданием на его месте взрыва:
                     self.create_boom(enemy.center_x, enemy.center_y, enemy.change_x, enemy.change_y)
                     enemy.remove_from_sprite_lists()
+
+                    # включение звука взрыва:
+                    arcade.play_sound(helicopter_crash, volume=0.8)
                 else:
                     # проверка удара дроном по игроку с изменением HP игрока и занулением HP дрона:
                     hit_list = arcade.check_for_collision_with_list(enemy, self.objects)
@@ -228,6 +240,8 @@ class MyGame(arcade.Window):
             bullet.angle = math.degrees(angle)
             bullet.change_x = math.cos(angle) * BULLET_SPEED
             bullet.change_y = math.sin(angle) * BULLET_SPEED
+
+            arcade.play_sound(laser_sound, volume=0.7)
 
             self.bullet_list.append(bullet)
 
