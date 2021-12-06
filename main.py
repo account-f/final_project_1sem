@@ -18,7 +18,7 @@ TANKETTE_HPS = [4, 8, 12]
 DRONE_VELOCITY = 2.5  # полная скорость дрона
 COPTER_VELOCITY = 3  # полная скорости коптера
 COPTER_HPS = [3, 6]
-BULLET_PENETRA = 2  # HP пули главной пушки
+BULLET_PENETRA = 3  # HP пули главной пушки
 
 # время:
 FPS = 60
@@ -56,10 +56,13 @@ class MyGame(arcade.Window):
         self.helicopter_crash = arcade.load_sound("sounds/helicopter_crash.mp3", False)
         self.end_of_game = arcade.load_sound("sounds/game_over.wav", False)
         self.laser_sound = arcade.load_sound("sounds/laser.mp3", False)
+        self.minigun_sound = arcade.load_sound("sounds/minigun_fire.mp3", False)
 
         self.background = arcade.Sprite("pictures/desert.png")  # фон
         self.background.center_x = SCREEN_WIDTH/2
         self.background.center_y = SCREEN_HEIGHT/2
+
+        self.mouse_pressed_test = False  # variable checks if key button IS pressed
 
     def setup(self):
         """ Set up the game and initialize the variables """
@@ -79,17 +82,21 @@ class MyGame(arcade.Window):
         self.booms = arcade.SpriteList()
 
         # инициализация главного холма (с записью его расположения на экране и помещением в список objects):
-        pillbox = arcade.Sprite("pictures/pillbox.png", 1)
+        pillbox = arcade.Sprite("pictures/pillbox.png")
         pillbox.center_x = SCREEN_WIDTH/2
         pillbox.center_y = pillbox.height/2
         pillbox.hp = 50
         self.objects.append(pillbox)
 
         # инициализация главной пушки (с записью ее расположения на экране и помещением в список player_guns):
-        gun = arcade.Sprite("pictures/gun.png", 1)
+        gun = arcade.Sprite("pictures/gun.png")
         gun.center_x = SCREEN_WIDTH/2
         gun.center_y = pillbox.height + 4/9 * gun.width
         self.player_guns.append(gun)
+        self.player_guns[0].fire_type = "laser"
+        self.player_guns[0].autofire = False
+        self.player_guns[0].rate = 2/FPS  # fire rate: number of created bullets per FPS screen updates
+        self.player_guns[0].recharge_time = 0
 
     def on_draw(self):
         """ Render the screen """
@@ -145,6 +152,9 @@ class MyGame(arcade.Window):
                 # обновление угла наклона пушки игрока
                 angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
                 gun.angle = math.degrees(angle) - 90
+                gun.recharge_time -= 1
+                if gun.autofire is True and self.mouse_pressed_test is True:
+                    self.player_fire(gun)
 
             for bullet in self.bullet_list:
                 # генерация массива врагов, столкнувшихся с пулей
@@ -266,22 +276,27 @@ class MyGame(arcade.Window):
 
     def on_mouse_press(self, x, y, button, modifiers):
         """ Вызывается при нажатии мыши игроком """
+        self.mouse_pressed_test = True
         if self.game_over is False:
             for gun in self.player_guns:
-                # создание пули и помещение ее в список пуль игрока:
-                bullet = arcade.Sprite(":resources:images/space_shooter/laserBlue01.png")
-                bullet.center_x = gun.center_x
-                bullet.center_y = gun.center_y
-                angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
+                self.player_fire(gun)
 
-                bullet.hp = BULLET_PENETRA
-                bullet.angle = math.degrees(angle)
-                bullet.change_x = math.cos(angle) * BULLET_SPEED
-                bullet.change_y = math.sin(angle) * BULLET_SPEED
+    def on_mouse_release(self, x, y, button, modifiers):
+        """ Вызывается при отпускании мыши игроком """
+        self.mouse_pressed_test = False
 
-                arcade.play_sound(self.laser_sound, volume=1)
-
-                self.bullet_list.append(bullet)
+    def on_key_press(self, symbol, modifiers):
+        """ Вызывается при нажатии кнопки клавиатуры """
+        if symbol == arcade.key.KEY_1:
+            self.player_guns[0].texture = arcade.load_texture("pictures/gun.png")
+            self.player_guns[0].fire_type = "laser"
+            self.player_guns[0].autofire = False
+            self.player_guns[0].rate = 2/FPS  # fire rate: number of created bullets per FPS screen updates
+        if symbol == arcade.key.KEY_2:
+            self.player_guns[0].texture = arcade.load_texture("pictures/machine_gun.png")
+            self.player_guns[0].fire_type = "high_velocity_bullet"
+            self.player_guns[0].autofire = True
+            self.player_guns[0].rate = 10/FPS
 
     def fire(self, enemy):
         """
@@ -306,6 +321,36 @@ class MyGame(arcade.Window):
             self.enemy_bullet_list.append(bullet)
         else:
             enemy.recharge_time -= 1
+
+    def player_fire(self, gun):
+        """
+        Realizes player's firing and aiming
+        Осуществляет огонь и перезарядку со стороны игрока
+        :param gun: какая пушка стреляет
+        """
+        if gun.recharge_time <= 0:
+            # создание пули и помещение ее в список пуль игрока
+            angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
+            if gun.fire_type == "laser":
+                bullet = arcade.Sprite(":resources:images/space_shooter/laserBlue01.png")
+                bullet.hp = 3
+                arcade.play_sound(self.laser_sound, volume=2)
+                bullet.change_x = math.cos(angle) * BULLET_SPEED
+                bullet.change_y = math.sin(angle) * BULLET_SPEED
+            elif gun.fire_type == "high_velocity_bullet":
+                bullet = arcade.Sprite("pictures/high_velocity_bullet.png")
+                bullet.hp = 1
+                bullet.change_x = math.cos(angle) * 128
+                bullet.change_y = math.sin(angle) * 128
+                arcade.play_sound(self.minigun_sound, volume=0.2)
+
+            bullet.angle = math.degrees(angle)
+            bullet.center_x = gun.center_x + math.cos(angle) * bullet.width/4
+            bullet.center_y = gun.center_y + math.sin(angle) * bullet.width/4
+
+            self.bullet_list.append(bullet)
+
+            gun.recharge_time = 1/gun.rate
 
     def create_boom(self, x, y, Vx, Vy):
         """
