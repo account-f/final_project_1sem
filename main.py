@@ -9,7 +9,7 @@ SCREEN_HEIGHT = 800
 SCREEN_TITLE = "Turret"
 mouse_x = 0
 mouse_y = 0
-GROUND = 60  # высота земли
+GROUND = 80  # высота земли
 
 # объекты:
 BULLET_SPEED = 48  # полная скорость пули
@@ -19,6 +19,7 @@ DRONE_VELOCITY = 2.5  # полная скорость дрона
 COPTER_VELOCITY = 3  # полная скорости коптера
 COPTER_HPS = [3, 6]
 BULLET_PENETRA = 3  # HP пули главной пушки
+TOLERANCE = SCREEN_WIDTH / 10
 
 # время:
 FPS = 60
@@ -146,23 +147,23 @@ class MyGame(arcade.Window):
             self.default_tankette_spawn(frequency=6, size=1)
             self.default_tankette_spawn(frequency=11, size=2)
             self.default_drone_spawn(frequency=5)
-            self.default_copter_spawn(frequency=3, size=0)
+            self.default_copter_spawn(frequency=3, size=0, type=random.choice([0, 1]))
 
             for gun in self.player_guns:
                 # обновление угла наклона пушки игрока
                 angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
                 gun.angle = math.degrees(angle) - 90
                 gun.recharge_time -= 1
-                if gun.autofire is True and self.mouse_pressed_test is True:
+                if (gun.autofire and self.mouse_pressed_test) is True:
                     self.player_fire(gun)
 
             for bullet in self.bullet_list:
-                # генерация массива врагов, столкнувшихся с пулей
+                # генерация списка врагов, столкнувшихся с пулей
                 hit_list = (arcade.check_for_collision_with_list(bullet, self.enemies))
                 for enemy in hit_list:
                     # обновление HP у врагов и пули; ее удаление в случае отсутствия HP:
                     if bullet.hp > 0:
-                        enemy.hp -= 1
+                        enemy.hp -= bullet.damage
                         bullet.hp -= 1
                     else:
                         bullet.remove_from_sprite_lists()
@@ -217,8 +218,9 @@ class MyGame(arcade.Window):
                             self.next_frame(enemy)
 
             for enemy in self.air_enemies:
-                enemy.gun.center_x = enemy.center_x
-                enemy.gun.center_y = enemy.center_y - 2
+                enemy.gun.angle = math.degrees(math.atan2(enemy.center_y - self.objects[0].center_y,
+                                                          enemy.center_x - self.objects[0].center_x)) + 90
+                enemy.time += 1
                 if enemy.hp <= 0:
                     enemy.remove_from_sprite_lists()
                     enemy.gun.remove_from_sprite_lists()
@@ -226,11 +228,15 @@ class MyGame(arcade.Window):
                 else:
                     if enemy.time % 3 == 0:
                         self.next_frame(enemy, frames=6)
-                    if ((enemy.center_x - self.objects[0].center_x) ** 2 + (
-                            enemy.center_x - self.objects[0].center_x) ** 2
-                            <= (SCREEN_HEIGHT / 4) ** 2):
+                    if enemy.type == 0 and enemy.time >= FPS:
+                        self.fire(enemy.gun)
+                    if ((enemy.center_x - self.objects[0].center_x) ** 2 +
+                            (enemy.center_y - self.objects[0].center_y) ** 2
+                            <= (SCREEN_HEIGHT / 3) ** 2):
                         enemy.change_x = 0
                         enemy.change_y = 0
+                        enemy.gun.change_x = 0
+                        enemy.gun.change_y = 0
                         self.fire(enemy.gun)
 
             for enemy in self.enemy_kamikaze:
@@ -248,6 +254,16 @@ class MyGame(arcade.Window):
                     for object in hit_list:
                         object.hp -= 10
                         enemy.hp = 0
+
+            for enemy in self.air_enemies:
+                if (enemy.center_x < 0 or enemy.center_x > SCREEN_WIDTH or
+                        enemy.center_y < 0 or enemy.center_y > SCREEN_HEIGHT):
+                    enemy.recharge_time = 10  # enemy.recharge_time can't reach 0 if enemy isn't on screen
+                if (enemy.center_x < - TOLERANCE or enemy.center_x > SCREEN_WIDTH + TOLERANCE or
+                        enemy.center_y < - TOLERANCE or enemy.center_y > SCREEN_HEIGHT + TOLERANCE):
+                    enemy.remove_from_sprite_lists()
+                    if hasattr("enemy", "gun") is True:
+                        enemy.gun.remove_from_sprite_lists()
 
             for boom in self.booms:
                 # анимация взрыва:
@@ -267,6 +283,7 @@ class MyGame(arcade.Window):
             self.enemy_bullet_list.update()
             self.enemy_kamikaze.update()
             self.booms.update()
+            self.guns.update()
 
     def on_mouse_motion(self, x, y, delta_x, delta_y):
         """ Считывание расположения мыши игрока и изменение соответсвующих глобальных переменных """
@@ -304,18 +321,21 @@ class MyGame(arcade.Window):
         :param enemy: firing enemy
         """
         if enemy.recharge_time == 0:
+            delta_angle = random.randint(-20, 20)  # разброс выстрела
+
             bullet = arcade.Sprite("pictures/" + str(enemy.size) + "_bullet.png", 1)
             bullet.size = enemy.size
             bullet.center_x = enemy.center_x
             bullet.center_y = enemy.center_y
-            angle = math.atan2(enemy.center_y - self.objects[0].center_y, enemy.center_x - self.objects[0].center_x)
+            angle = math.atan2(enemy.center_y - self.objects[0].center_y,
+                               enemy.center_x - self.objects[0].center_x) + delta_angle * math.pi / 180
             bullet.angle = math.degrees(angle)
             bullet.change_x = - math.cos(angle) * BULLET_SPEED
             bullet.change_y = - math.sin(angle) * BULLET_SPEED
             if enemy.size == 0:
                 enemy.recharge_time = 30
             elif enemy.size == 1:
-                enemy.recharge_time = 60
+                enemy.recharge_time = 50
             elif enemy.size == 2:
                 enemy.recharge_time = 75
             self.enemy_bullet_list.append(bullet)
@@ -337,11 +357,13 @@ class MyGame(arcade.Window):
                 arcade.play_sound(self.laser_sound, volume=2)
                 bullet.change_x = math.cos(angle) * BULLET_SPEED
                 bullet.change_y = math.sin(angle) * BULLET_SPEED
+                bullet.damage = 3
             elif gun.fire_type == "high_velocity_bullet":
                 bullet = arcade.Sprite("pictures/high_velocity_bullet.png")
                 bullet.hp = 1
                 bullet.change_x = math.cos(angle) * 128
                 bullet.change_y = math.sin(angle) * 128
+                bullet.damage = 1
                 arcade.play_sound(self.minigun_sound, volume=0.2)
 
             bullet.angle = math.degrees(angle)
@@ -399,7 +421,6 @@ class MyGame(arcade.Window):
         if self.frame_count % (FPS * frequency) == 0:
             direct = random.choice([1, -1])
             drone = arcade.Sprite("pictures/drone.png")
-            drone.type = "drone"
             drone.size = 0
             drone.center_x = SCREEN_WIDTH/2 - direct * (SCREEN_WIDTH/2 + drone.width)
             drone.top = random.randint(SCREEN_HEIGHT//2, SCREEN_HEIGHT)
@@ -412,7 +433,7 @@ class MyGame(arcade.Window):
             self.enemy_kamikaze.append(drone)
             self.enemies.append(drone)
 
-    def default_copter_spawn(self, frequency, size):
+    def default_copter_spawn(self, frequency, size, type):
         """
         Creates a (heli)copter
         :param frequency: frequency of spawn
@@ -423,25 +444,32 @@ class MyGame(arcade.Window):
             direct = random.choice([1, -1])
             file = "pictures/" + str(size) + "_copter 0 .png"
             copter = arcade.Sprite(file)
-            copter.type = "copter"
+            copter.type = type
             copter.center_x = SCREEN_WIDTH/2 - direct * (SCREEN_WIDTH/2 + copter.width)
             copter.top = random.randint(SCREEN_HEIGHT//2, SCREEN_HEIGHT)
             copter.direct = direct
             copter.file = file
+            copter.size = size
+            copter.hp = COPTER_HPS[size]
             copter.time = 0  # initial existing time
 
-            angle = math.atan2(self.objects[0].center_y - copter.center_y, self.objects[0].center_x - copter.center_x)
-            copter.change_x = COPTER_VELOCITY * math.cos(angle)
-            copter.change_y = COPTER_VELOCITY * math.sin(angle)
-            copter.hp = COPTER_HPS[size]
-            copter.size = size
+            angle = math.atan2(self.objects[0].center_y - copter.center_y,
+                               self.objects[0].center_x - copter.center_x)
+
+            if type == 0:
+                copter.change_x = COPTER_VELOCITY * direct
+            elif type == 1:
+                copter.change_x = COPTER_VELOCITY * math.cos(angle)
+                copter.change_y = COPTER_VELOCITY * math.sin(angle)
 
             copter.gun = arcade.Sprite("pictures/gun1.png")
             copter.gun.size = 0
             copter.gun.angle = math.degrees(angle) - 90
             copter.gun.center_x = copter.center_x
-            copter.gun.top = copter.center_y
+            copter.gun.top = copter.center_y + 8
             copter.gun.recharge_time = 0
+            copter.gun.change_x = copter.change_x
+            copter.gun.change_y = copter.change_y
 
             self.air_enemies.append(copter)
             self.enemies.append(copter)
