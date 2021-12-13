@@ -29,6 +29,8 @@ ENEMIES[4] = ["tankette"]
 ENEMIES[2] = ["tankette", "drone"]
 ENEMIES[1] = ["tankette", "copter1", "copter2"]  # list of enemies which cost 1
 
+G = 1  # acceleration of gravity
+
 # время:
 FPS = 60
 FPB = 4  # frames per one texture image of explosion
@@ -64,14 +66,17 @@ class MyGame(arcade.Window):
         self.score = 0  # счёт
         self.enemy_points = 0  # текущее значение очков врага
         self.spawn_timer = 0  # таймер, по которому рассчитывается спавн врагов
+        self.cash = 0  # счётчик валюты
 
+        self.icons = None  # иконки
+        self.moneys = None  # "монетки", а по сути запчасти, служащие внутриигровой валютой
         self.enemies = None  # все враги
         self.ground_enemies = None  # наземные враги
         self.air_enemies = None  # воздушные враги
         self.enemy_kamikaze = None  # враги-камикадзе: взрываются по достижении цели
         self.bullet_list = None  # список пуль
         self.enemy_bullet_list = None  # список вражеских снарядов
-        self.objects = None  # объекты, представляющие стратегическую важность для игры
+        self.objects = None  # список для дота
         self.player_guns = None  # пушки игрока
         self.guns = None  # пушки врагов
         self.booms = None  # список действующих анимаций взрывов
@@ -83,6 +88,7 @@ class MyGame(arcade.Window):
         self.end_of_game = arcade.load_sound("sounds/game_over.wav", False)
         self.laser_sound = arcade.load_sound("sounds/laser.mp3", False)
         self.minigun_sound = arcade.load_sound("sounds/minigun_fire.mp3", False)
+        self.heal_sound = arcade.load_sound("sounds/heal.mp3", False)
 
         self.background = arcade.Sprite("pictures/desert.png")  # фон
         self.background.center_x = SCREEN_WIDTH/2
@@ -113,6 +119,8 @@ class MyGame(arcade.Window):
         arcade.play_sound(self.main_sound, volume=0.2, looping=True)
 
         # инициализация различных списков:
+        self.icons = arcade.SpriteList()
+        self.moneys = arcade.SpriteList()
         self.enemies = arcade.SpriteList()
         self.ground_enemies = arcade.SpriteList()
         self.air_enemies = arcade.SpriteList()
@@ -128,7 +136,8 @@ class MyGame(arcade.Window):
         pillbox = arcade.Sprite("pictures/pillbox.png")
         pillbox.center_x = SCREEN_WIDTH/2
         pillbox.center_y = pillbox.height/2
-        pillbox.hp = 50
+        pillbox.max_hp = 50
+        pillbox.hp = pillbox.max_hp
         self.objects.append(pillbox)
 
         # инициализация главной пушки (с записью ее расположения на экране и помещением в список player_guns):
@@ -141,14 +150,19 @@ class MyGame(arcade.Window):
         self.player_guns[0].rate = 2/FPS  # fire rate: number of created bullets per FPS screen updates
         self.player_guns[0].recharge_time = 0
 
+        cash_icon = arcade.Sprite("pictures/money_icon.png")
+        cash_icon.center_x = SCREEN_WIDTH/2 - 100 - cash_icon.width
+        cash_icon.center_y = SCREEN_HEIGHT - 40 + cash_icon.height/2
+        self.icons.append(cash_icon)
+
     def on_draw(self):
         """ Render the screen """
 
         if menu:
             self.manager.draw()
             return None
-
-        arcade.start_render()
+        else:
+            arcade.start_render()
 
         # рисование фона и земли:
         self.background.draw()
@@ -156,6 +170,8 @@ class MyGame(arcade.Window):
         arcade.draw_rectangle_filled(SCREEN_WIDTH/2, GROUND/4, SCREEN_WIDTH, GROUND/2, (226, 198, 131))
 
         # рисование различных объектов:
+        self.icons.draw()
+        self.moneys.draw()
         self.objects.draw()
         self.bullet_list.draw()
         self.enemy_bullet_list.draw()
@@ -177,8 +193,17 @@ class MyGame(arcade.Window):
                              arcade.color.FRENCH_WINE, 25, width=object.width, align="center",
                              font_name="Kenney Future")
 
-        arcade.draw_text(str(self.score), SCREEN_WIDTH/2, SCREEN_HEIGHT - 40,
+        # рисование текста со счётом и монетами:
+        arcade.draw_text("SCORE: " + str(self.score), SCREEN_WIDTH/2 + 100, SCREEN_HEIGHT - 40,
                          arcade.color.FRENCH_WINE, 25, font_name="Kenney Future")
+
+        if self.cash < 10:
+            arcade.draw_text(str(self.cash), SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT - 40,
+                             arcade.color.FRENCH_WINE, 25, font_name="Kenney Future")
+        else:
+            arcade.draw_text(str(self.cash), SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT - 40,
+                             arcade.color.DARK_PASTEL_GREEN, 25, font_name="Kenney Future")
+
 
     def on_update(self, delta_time):
         """ Логика игры """
@@ -215,28 +240,10 @@ class MyGame(arcade.Window):
                     # удаление пули при ее покидании экрана и/или отсутствии HP
                     bullet.remove_from_sprite_lists()
 
-            for object in self.objects:
-                # обновление HP игрока и замена текстуры холма при его занулении
-                hit_list = arcade.check_for_collision_with_list(object, self.enemy_bullet_list)
-                for bullet in hit_list:
-                    object.hp -= bullet.size
-
-                    # зануление HP игрока при его возможном достижении отрицательного значения:
-                    if object.hp < 0:
-                        object.hp = 0
-
-                    bullet.remove_from_sprite_lists()
-
-                if object.hp == 0:
-                    # замена картинки холма при достижении нулевого HP игроком
-                    object.texture = arcade.load_texture("pictures/pillbox_destructed.png")
-                    arcade.play_sound(self.end_of_game, volume=0.7)
-                    self.game_over = True
-                    print("Your score: ", self.score)
-
             for enemy in self.ground_enemies:
                 enemy.time += 1
                 if enemy.hp <= 0:
+                    self.generate_money(enemy)
                     # удаление танкетки при отсутствии у нее HP:
                     enemy.remove_from_sprite_lists()
                     self.score += enemy.size  # начисление очков в зависимости от размера врага
@@ -259,11 +266,12 @@ class MyGame(arcade.Window):
                                                           enemy.center_x - self.objects[0].center_x)) + 90
                 enemy.time += 1
                 if enemy.hp <= 0:
+                    self.generate_money(enemy)
                     enemy.remove_from_sprite_lists()
                     enemy.gun.remove_from_sprite_lists()
                     self.score += enemy.size  # начисление очков в зависимости от размера врага
                 else:
-                    if enemy.time % 3 == 0:
+                    if enemy.time % 2 == 0:
                         self.next_frame(enemy, frames=6)
                     if enemy.type == 2 and enemy.time >= FPS:
                         self.fire(enemy.gun)
@@ -290,7 +298,10 @@ class MyGame(arcade.Window):
                     hit_list = arcade.check_for_collision_with_list(enemy, self.objects)
                     for object in hit_list:
                         object.hp -= 10
-                        enemy.hp = 0
+
+                        self.create_boom(enemy.center_x, enemy.center_y, enemy.change_x, enemy.change_y)
+                        enemy.remove_from_sprite_lists()
+                        arcade.play_sound(self.helicopter_crash, volume=0.3)
 
             for enemy in self.air_enemies:
                 if (enemy.center_x < 0 or enemy.center_x > SCREEN_WIDTH or
@@ -314,7 +325,40 @@ class MyGame(arcade.Window):
                     else:
                         boom.remove_from_sprite_lists()
 
+            for object in self.objects:
+                # обновление HP игрока и замена текстуры холма при его занулении
+                hit_list = arcade.check_for_collision_with_list(object, self.enemy_bullet_list)
+                for bullet in hit_list:
+                    object.hp -= bullet.size
+
+                    bullet.remove_from_sprite_lists()
+
+                if object.hp <= 0:
+                    # замена картинки холма при достижении нулевого HP игроком
+                    object.texture = arcade.load_texture("pictures/pillbox_destructed.png")
+                    object.hp = 0
+                    arcade.play_sound(self.end_of_game, volume=0.7)
+                    self.game_over = True
+                    print("Your score: ", self.score)
+
+            for money in self.moneys:
+                if money.caught_up is False:
+                    money.change_y -= G
+                if money.bottom <= GROUND/2 + 4:
+                    money.change_x = 0
+                    money.change_y = 0
+                if math.dist([mouse_x, mouse_y], [money.center_x, money.center_y]) <= 20:
+                    angle = math.atan2(self.icons[0].center_y - money.center_y, self.icons[0].center_x - money.center_x)
+                    money.change_x = math.cos(angle) * 32
+                    money.change_y = math.sin(angle) * 32
+                    money.caught_up = True
+                if math.dist([self.icons[0].center_x, self.icons[0].center_y], [money.center_x, money.center_y]) <= 20:
+                    self.cash += 1
+                    self.score += 1
+                    money.remove_from_sprite_lists()
+
             # обновление объектов игры:
+            self.moneys.update()
             self.enemies.update()
             self.bullet_list.update()
             self.enemy_bullet_list.update()
@@ -351,6 +395,8 @@ class MyGame(arcade.Window):
             self.player_guns[0].fire_type = "high_velocity_bullet"
             self.player_guns[0].autofire = True
             self.player_guns[0].rate = 10/FPS
+        if symbol == arcade.key.H:
+            self.heal(10)
 
     def fire(self, enemy):
         """
@@ -570,6 +616,22 @@ class MyGame(arcade.Window):
             for i in range(len(self.spawn_list)):
                 if self.spawn_timer == self.spawn_list[i][2]:
                     eval("self.default_" + str(self.spawn_list[i][0]) + "_spawn(" + str(self.spawn_list[i][1]) + ")")
+
+    def generate_money(self, enemy):
+        for _ in range(random.randint(0, enemy.size)):
+            money = arcade.Sprite("pictures/money" + str(random.randint(1, 10)) + ".png")
+            money.center_x = enemy.center_x
+            money.center_y = enemy.center_y
+            money.change_x = random.randint(-3, 3)
+            money.change_y = random.randint(-5, 5)
+            money.caught_up = False
+            self.moneys.append(money)
+
+    def heal(self, hp):
+        if self.objects[0].hp + hp <= self.objects[0].max_hp and self.cash >= hp:
+            self.objects[0].hp += hp
+            self.cash -= hp
+            arcade.play_sound(self.heal_sound, volume=0.2)
 
 
 def main():
