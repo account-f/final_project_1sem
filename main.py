@@ -22,14 +22,15 @@ COPTER_HPS = [3, 6]
 BULLET_PENETRA = 3  # HP пули главной пушки
 TOLERANCE = SCREEN_WIDTH / 10
 
-enemy_points = 20  # initial number of enemy points, using to spawn
-
 ENEMIES = [0] * 5
 ENEMIES[4] = ["tankette"]
 ENEMIES[2] = ["tankette", "drone"]
 ENEMIES[1] = ["tankette", "copter1", "copter2"]  # list of enemies which cost 1
 
-G = 1  # acceleration of gravity
+G_for_money = 1  # acceleration of gravity for money
+G_for_bullets = 0.1  # acceleration of gravity for bullets
+
+upgrade_list_1 = [0, 1]
 
 # время:
 FPS = 60
@@ -76,8 +77,10 @@ class MyGame(arcade.Window):
         self.enemy_kamikaze = None  # враги-камикадзе: взрываются по достижении цели
         self.bullet_list = None  # список пуль
         self.enemy_bullet_list = None  # список вражеских снарядов
+        self.ground_lateral_weapons = None  # второстепенные наземные пушки
+        self.static_objects = None  # другие объекты
         self.objects = None  # список для дота
-        self.player_guns = None  # пушки игрока
+        self.player_guns = None  # наводящиеся пушки игрока
         self.guns = None  # пушки врагов
         self.booms = None  # список действующих анимаций взрывов
         self.spawn_list = []  # list contains name of enemy, size and random time of spawn
@@ -94,6 +97,7 @@ class MyGame(arcade.Window):
         self.background.center_x = SCREEN_WIDTH/2
         self.background.center_y = SCREEN_HEIGHT/2
 
+        self.max_enemy_points = 10  # initial number of enemy points, using to spawn
         self.mouse_pressed_test = False  # variable checks if key button IS pressed
 
         menu = True
@@ -122,11 +126,13 @@ class MyGame(arcade.Window):
         self.icons = arcade.SpriteList()
         self.moneys = arcade.SpriteList()
         self.enemies = arcade.SpriteList()
+        self.static_objects = arcade.SpriteList()
         self.ground_enemies = arcade.SpriteList()
         self.air_enemies = arcade.SpriteList()
         self.enemy_kamikaze = arcade.SpriteList()
         self.bullet_list = arcade.SpriteList()
         self.enemy_bullet_list = arcade.SpriteList()
+        self.ground_lateral_weapons = arcade.SpriteList()
         self.objects = arcade.SpriteList()
         self.player_guns = arcade.SpriteList()
         self.guns = arcade.SpriteList()
@@ -172,8 +178,10 @@ class MyGame(arcade.Window):
         # рисование различных объектов:
         self.icons.draw()
         self.moneys.draw()
-        self.objects.draw()
+        self.ground_lateral_weapons.draw()
         self.bullet_list.draw()
+        self.objects.draw()
+        self.static_objects.draw()
         self.enemy_bullet_list.draw()
         self.player_guns.draw()
         self.ground_enemies.draw()
@@ -204,10 +212,8 @@ class MyGame(arcade.Window):
             arcade.draw_text(str(self.cash), SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT - 40,
                              arcade.color.DARK_PASTEL_GREEN, 25, font_name="Kenney Future")
 
-
     def on_update(self, delta_time):
-        """ Логика игры """
-
+        """ Вся логика игры здесь. """
         if not self.game_over and not menu:
 
             # обновление счетчика кадров:
@@ -239,6 +245,7 @@ class MyGame(arcade.Window):
                         or bullet.hp <= 0):
                     # удаление пули при ее покидании экрана и/или отсутствии HP
                     bullet.remove_from_sprite_lists()
+                bullet.change_y -= G_for_bullets
 
             for enemy in self.ground_enemies:
                 enemy.time += 1
@@ -284,6 +291,15 @@ class MyGame(arcade.Window):
                         enemy.gun.change_y = 0
                         self.fire(enemy.gun)
 
+                if (enemy.center_x < 0 or enemy.center_x > SCREEN_WIDTH or
+                        enemy.center_y < 0 or enemy.center_y > SCREEN_HEIGHT):
+                    enemy.recharge_time = 10  # enemy.recharge_time can't reach 0 if enemy isn't on screen
+                if (enemy.center_x < - TOLERANCE or enemy.center_x > SCREEN_WIDTH + TOLERANCE or
+                        enemy.center_y < - TOLERANCE or enemy.center_y > SCREEN_HEIGHT + TOLERANCE):
+                    enemy.remove_from_sprite_lists()
+                    if hasattr("enemy", "gun") is True:
+                        enemy.gun.remove_from_sprite_lists()
+
             for enemy in self.enemy_kamikaze:
                 if enemy.hp <= 0:
                     # удаление дрона с созданием на его месте взрыва:
@@ -302,16 +318,6 @@ class MyGame(arcade.Window):
                         self.create_boom(enemy.center_x, enemy.center_y, enemy.change_x, enemy.change_y)
                         enemy.remove_from_sprite_lists()
                         arcade.play_sound(self.helicopter_crash, volume=0.3)
-
-            for enemy in self.air_enemies:
-                if (enemy.center_x < 0 or enemy.center_x > SCREEN_WIDTH or
-                        enemy.center_y < 0 or enemy.center_y > SCREEN_HEIGHT):
-                    enemy.recharge_time = 10  # enemy.recharge_time can't reach 0 if enemy isn't on screen
-                if (enemy.center_x < - TOLERANCE or enemy.center_x > SCREEN_WIDTH + TOLERANCE or
-                        enemy.center_y < - TOLERANCE or enemy.center_y > SCREEN_HEIGHT + TOLERANCE):
-                    enemy.remove_from_sprite_lists()
-                    if hasattr("enemy", "gun") is True:
-                        enemy.gun.remove_from_sprite_lists()
 
             for boom in self.booms:
                 # анимация взрыва:
@@ -343,7 +349,7 @@ class MyGame(arcade.Window):
 
             for money in self.moneys:
                 if money.caught_up is False:
-                    money.change_y -= G
+                    money.change_y -= G_for_money
                 if money.bottom <= GROUND/2 + 4:
                     money.change_x = 0
                     money.change_y = 0
@@ -357,12 +363,26 @@ class MyGame(arcade.Window):
                     self.score += 1
                     money.remove_from_sprite_lists()
 
+            for gun in self.ground_lateral_weapons:
+                if len(self.ground_enemies) > 0:
+                    self.horizontal_lateral_weapons_fire(gun)
+
+            if (self.frame_count + 2) % (SPAWN_INTERVAL) == 0:
+                self.upgrade()
+
+            for bullet in self.enemy_bullet_list:
+                if (bullet.bottom < GROUND/2 or bullet.top > SCREEN_HEIGHT
+                        or bullet.right < 0 or bullet.left > SCREEN_WIDTH):
+                    bullet.remove_from_sprite_lists()
+                bullet.change_y -= G_for_bullets
+
             # обновление объектов игры:
             self.moneys.update()
             self.enemies.update()
             self.bullet_list.update()
             self.enemy_bullet_list.update()
             self.enemy_kamikaze.update()
+            self.static_objects.update()
             self.booms.update()
             self.guns.update()
 
@@ -456,6 +476,26 @@ class MyGame(arcade.Window):
             self.bullet_list.append(bullet)
 
             gun.recharge_time = 1/gun.rate
+
+    def horizontal_lateral_weapons_fire(self, weapon, double=True):
+        """
+        Makes ground lateral weapon firing.
+        :param weapon: firing weapon:
+        :param double: if weapon id double and can fire in two sides
+        """
+        if weapon.recharge_time == 0:
+            if double is True:
+                for direct in [-1, 1]:
+                        bullet = arcade.Sprite("pictures/4_bullet.png")
+                        bullet.center_x = weapon.center_x
+                        bullet.center_y = weapon.center_y
+                        bullet.change_x = 32 * direct
+                        bullet.hp = 1
+                        bullet.damage = 2
+                        self.bullet_list.append(bullet)
+            weapon.recharge_time = 1/weapon.rate
+        else:
+            weapon.recharge_time -= 1
 
     def create_boom(self, x, y, Vx, Vy):
         """
@@ -592,7 +632,7 @@ class MyGame(arcade.Window):
             self.spawn_list = []
 
             numbers = [0] * 5
-            self.enemy_points += enemy_points
+            self.enemy_points += self.max_enemy_points
             numbers[2] = random.randint(0, self.enemy_points // 2)
             self.enemy_points -= numbers[2] * 2
             numbers[4] = random.randint(0, self.enemy_points // 4)
@@ -611,6 +651,7 @@ class MyGame(arcade.Window):
                 self.spawn_list.append([ENEMIES[i][len(ENEMIES[i])-1], i, random.randint(0, SPAWN_INTERVAL)])
 
             self.spawn_timer = SPAWN_INTERVAL
+            self.max_enemy_points += 0.5
         else:
             self.spawn_timer -= 1
             for i in range(len(self.spawn_list)):
@@ -628,10 +669,29 @@ class MyGame(arcade.Window):
             self.moneys.append(money)
 
     def heal(self, hp):
-        if self.objects[0].hp + hp <= self.objects[0].max_hp and self.cash >= hp:
+        if self.objects[0].hp + hp <= self.objects[0].max_hp and self.cash >= hp and not self.game_over:
             self.objects[0].hp += hp
             self.cash -= hp
             arcade.play_sound(self.heal_sound, volume=0.2)
+
+    def upgrade(self):
+        if len(upgrade_list_1) > 0:
+            upgrade = random.choice(upgrade_list_1)
+            upgrade_list_1.remove(upgrade)
+            if upgrade == 0:
+                lateral_weapons = arcade.Sprite("pictures/lateral_weapons.png")
+                lateral_weapons.center_x = self.objects[0].center_x
+                lateral_weapons.center_y = GROUND/2 + 32
+                lateral_weapons.rate = 1/FPS
+                lateral_weapons.recharge_time = 30
+                self.ground_lateral_weapons.append(lateral_weapons)
+            if upgrade == 1 or 0:
+                shield = arcade.Sprite("pictures/shield.png")
+                shield.center_x = self.objects[0].center_x
+                shield.bottom = self.objects[0].bottom
+                self.static_objects.append(shield)
+                self.objects[0].max_hp += 25
+                self.objects[0].hp = self.objects[0].max_hp
 
 
 def main():
