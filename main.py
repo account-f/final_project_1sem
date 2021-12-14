@@ -68,6 +68,9 @@ class MyGame(arcade.Window):
         self.enemy_points = 0  # текущее значение очков врага
         self.spawn_timer = 0  # таймер, по которому рассчитывается спавн врагов
         self.cash = 0  # счётчик валюты
+        self.text = "start"
+        self.text_time = -1  # timer for text
+        self.health_hint_marker = False
 
         self.icons = None  # иконки
         self.moneys = None  # "монетки", а по сути запчасти, служащие внутриигровой валютой
@@ -99,7 +102,7 @@ class MyGame(arcade.Window):
         self.background.center_x = SCREEN_WIDTH/2
         self.background.center_y = SCREEN_HEIGHT/2
 
-        self.max_enemy_points = 3  # initial number of enemy points, using to spawn
+        self.max_enemy_points = 5  # initial number of enemy points, using to spawn
         self.mouse_pressed_test = False  # variable checks if key button IS pressed
 
         menu = True
@@ -216,12 +219,18 @@ class MyGame(arcade.Window):
             arcade.draw_text(str(self.cash), SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT - 40,
                              arcade.color.DARK_PASTEL_GREEN, 25, font_name="Kenney Future")
 
+        if self.text_time >= 0:
+            arcade.draw_text(self.text, 0, 3 * SCREEN_HEIGHT / 4,
+                             arcade.color.WHITE, 25, font_name="Kenney Future",
+                             width=SCREEN_WIDTH, align="center")
+
     def on_update(self, delta_time):
         """ Вся логика игры здесь. """
         if not self.game_over and not menu:
 
-            # обновление счетчика кадров:
+            # обновление счетчика кадров и таймера для текста:
             self.frame_count += 1
+            self.text_time -= 1
 
             self.spawn()
 
@@ -361,6 +370,9 @@ class MyGame(arcade.Window):
                 if math.dist([self.icons[0].center_x, self.icons[0].center_y], [money.center_x, money.center_y]) <= 20:
                     self.cash += 1
                     self.score += 1
+                    if self.cash >= 10 and self.health_hint_marker is False:
+                        self.screen_text("PRESS H TO HEAL FOR 10 DETAILS")
+                        self.health_hint_marker = True
                     money.remove_from_sprite_lists()
 
             for gun in self.ground_lateral_weapons:
@@ -461,26 +473,27 @@ class MyGame(arcade.Window):
             angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
             if gun.fire_type == "laser":
                 bullet = arcade.Sprite(":resources:images/space_shooter/laserBlue01.png")
-                bullet.hp = gun.penetra
                 arcade.play_sound(self.laser_sound, volume=2)
                 bullet.change_x = math.cos(angle) * BULLET_SPEED
                 bullet.change_y = math.sin(angle) * BULLET_SPEED
-                bullet.damage = gun.damage
             elif gun.fire_type == "high_velocity_bullet":
                 bullet = arcade.Sprite("pictures/high_velocity_bullet.png")
-                bullet.hp = gun.penetra
                 bullet.change_x = math.cos(angle) * 128
                 bullet.change_y = math.sin(angle) * 128
-                bullet.damage = gun.damage
                 arcade.play_sound(self.minigun_sound, volume=0.1)
             elif gun.fire_type == "ball":
                 bullet = arcade.Sprite("pictures/2_bullet.png")
-                bullet.hp = gun.penetra
                 bullet.change_x = math.cos(angle) * BULLET_SPEED
                 bullet.change_y = math.sin(angle) * BULLET_SPEED
-                bullet.damage = gun.damage
+                arcade.play_sound(self.cannon_sound, volume=0.1)
+            elif gun.fire_type == "ball2":
+                bullet = arcade.Sprite("pictures/4_bullet.png")
+                bullet.change_x = math.cos(angle) * BULLET_SPEED
+                bullet.change_y = math.sin(angle) * BULLET_SPEED
                 arcade.play_sound(self.cannon_sound, volume=0.1)
 
+            bullet.hp = gun.penetra
+            bullet.damage = gun.damage
             bullet.angle = math.degrees(angle)
             bullet.center_x = gun.center_x + math.cos(angle) * bullet.width/4
             bullet.center_y = gun.center_y + math.sin(angle) * bullet.width/4
@@ -662,9 +675,10 @@ class MyGame(arcade.Window):
                         self.spawn_list.append([elem, size, random.randint(1, SPAWN_INTERVAL-1)])
                     numbers[size] -= current_number
                 if numbers[size] > 0:
-                    self.spawn_list.append([ENEMIES[size][len(ENEMIES[size]) - 1], size, random.randint(0, SPAWN_INTERVAL)])
+                    self.spawn_list.append([ENEMIES[size][len(ENEMIES[size]) - 1],
+                                            size, random.randint(0, SPAWN_INTERVAL)])
             self.spawn_timer = SPAWN_INTERVAL
-            self.max_enemy_points += 1
+            self.max_enemy_points += 3
         else:
             self.spawn_timer -= 1
             for enemy_str in self.spawn_list:
@@ -699,6 +713,7 @@ class MyGame(arcade.Window):
                 lateral_weapons.rate = 1/FPS
                 lateral_weapons.recharge_time = 30
                 self.ground_lateral_weapons.append(lateral_weapons)
+                self.screen_text("WEAPONS UPGRADED!")
             elif upgrade == 1:
                 shield = arcade.Sprite("pictures/shield.png")
                 shield.center_x = self.objects[0].center_x
@@ -706,9 +721,20 @@ class MyGame(arcade.Window):
                 self.static_objects.append(shield)
                 self.objects[0].max_hp += 25
                 self.objects[0].hp += 25
+                self.screen_text("SHIELD ADDED! +25HP")
             elif upgrade == 2:
                 self.player_guns[0].texture = arcade.load_texture("pictures/initial_gun_upgraded.png")
-                self.player_guns[0].rate *= 2
+                self.player_guns[0].damage *= 2
+                self.player_guns[0].fire_type = "ball2"
+                self.screen_text("GUN UPGRADED! DAMAGE IMPROVED")
+
+    def screen_text(self, text):
+        """
+        Helps print text on the screen
+        :param text: text printing on the screen
+        """
+        self.text = text
+        self.text_time = FPS*3
 
 
 def main():
