@@ -30,12 +30,12 @@ ENEMIES[1] = ["tankette", "copter1", "copter2"]  # list of enemies which cost 1
 G_for_money = 1  # acceleration of gravity for money
 G_for_bullets = 0.1  # acceleration of gravity for bullets
 
-upgrade_list_1 = [0, 1]
+upgrade_list_1 = [0, 1, 2]
 
 # время:
 FPS = 60
 FPB = 4  # frames per one texture image of explosion
-SPAWN_INTERVAL = FPS*10
+SPAWN_INTERVAL = FPS*10  # time interval for one spawn cycle
 
 
 class QuitButton(arcade.gui.UIFlatButton):
@@ -92,12 +92,14 @@ class MyGame(arcade.Window):
         self.laser_sound = arcade.load_sound("sounds/laser.mp3", False)
         self.minigun_sound = arcade.load_sound("sounds/minigun_fire.mp3", False)
         self.heal_sound = arcade.load_sound("sounds/heal.mp3", False)
+        self.upgrade_sound = arcade.load_sound("sounds/upgrade.mp3", False)
+        self.cannon_sound = arcade.load_sound("sounds/cannon_fire.mp3", False)
 
         self.background = arcade.Sprite("pictures/desert.png")  # фон
         self.background.center_x = SCREEN_WIDTH/2
         self.background.center_y = SCREEN_HEIGHT/2
 
-        self.max_enemy_points = 10  # initial number of enemy points, using to spawn
+        self.max_enemy_points = 3  # initial number of enemy points, using to spawn
         self.mouse_pressed_test = False  # variable checks if key button IS pressed
 
         menu = True
@@ -147,14 +149,16 @@ class MyGame(arcade.Window):
         self.objects.append(pillbox)
 
         # инициализация главной пушки (с записью ее расположения на экране и помещением в список player_guns):
-        gun = arcade.Sprite("pictures/gun.png")
-        gun.center_x = SCREEN_WIDTH/2
-        gun.center_y = pillbox.height + 4/9 * gun.width
-        self.player_guns.append(gun)
-        self.player_guns[0].fire_type = "laser"
-        self.player_guns[0].autofire = False
-        self.player_guns[0].rate = 2/FPS  # fire rate: number of created bullets per FPS screen updates
-        self.player_guns[0].recharge_time = 0
+        initial_gun = arcade.Sprite("pictures/initial_gun.png")
+        initial_gun.center_x = SCREEN_WIDTH/2
+        initial_gun.center_y = pillbox.height + 4/9 * initial_gun.width
+        initial_gun.damage = 1
+        initial_gun.penetra = 1
+        initial_gun.fire_type = "ball"
+        initial_gun.autofire = False
+        initial_gun.rate = 2/FPS  # fire rate: number of created bullets per FPS screen updates
+        initial_gun.recharge_time = 0
+        self.player_guns.append(initial_gun)
 
         cash_icon = arcade.Sprite("pictures/money_icon.png")
         cash_icon.center_x = SCREEN_WIDTH/2 - 100 - cash_icon.width
@@ -263,10 +267,6 @@ class MyGame(arcade.Window):
                             (enemy.size == 4 and distance < SCREEN_WIDTH/4)):
                         self.fire(enemy)
                         enemy.change_x = 0
-                    else:
-                        # замена текстуры танкетки в нужный момент времени:
-                        if enemy.time % 5 == 0:
-                            self.next_frame(enemy)
 
             for enemy in self.air_enemies:
                 enemy.gun.angle = math.degrees(math.atan2(enemy.center_y - self.objects[0].center_y,
@@ -385,6 +385,7 @@ class MyGame(arcade.Window):
             self.static_objects.update()
             self.booms.update()
             self.guns.update()
+            self.air_enemies.update_animation(1)
 
     def on_mouse_motion(self, x, y, delta_x, delta_y):
         """ Считывание расположения мыши игрока и изменение соответсвующих глобальных переменных """
@@ -408,11 +409,15 @@ class MyGame(arcade.Window):
         if symbol == arcade.key.KEY_1:
             self.player_guns[0].texture = arcade.load_texture("pictures/gun.png")
             self.player_guns[0].fire_type = "laser"
+            self.player_guns[0].damage = 2
+            self.player_guns[0].penetra = 3
             self.player_guns[0].autofire = False
             self.player_guns[0].rate = 2/FPS  # fire rate: number of created bullets per FPS screen updates
         if symbol == arcade.key.KEY_2:
             self.player_guns[0].texture = arcade.load_texture("pictures/machine_gun.png")
             self.player_guns[0].fire_type = "high_velocity_bullet"
+            self.player_guns[0].damage = 1
+            self.player_guns[0].penetra = 1
             self.player_guns[0].autofire = True
             self.player_guns[0].rate = 10/FPS
         if symbol == arcade.key.H:
@@ -456,18 +461,25 @@ class MyGame(arcade.Window):
             angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
             if gun.fire_type == "laser":
                 bullet = arcade.Sprite(":resources:images/space_shooter/laserBlue01.png")
-                bullet.hp = 3
+                bullet.hp = gun.penetra
                 arcade.play_sound(self.laser_sound, volume=2)
                 bullet.change_x = math.cos(angle) * BULLET_SPEED
                 bullet.change_y = math.sin(angle) * BULLET_SPEED
-                bullet.damage = 3
+                bullet.damage = gun.damage
             elif gun.fire_type == "high_velocity_bullet":
                 bullet = arcade.Sprite("pictures/high_velocity_bullet.png")
-                bullet.hp = 1
+                bullet.hp = gun.penetra
                 bullet.change_x = math.cos(angle) * 128
                 bullet.change_y = math.sin(angle) * 128
-                bullet.damage = 1
-                arcade.play_sound(self.minigun_sound, volume=0.2)
+                bullet.damage = gun.damage
+                arcade.play_sound(self.minigun_sound, volume=0.1)
+            elif gun.fire_type == "ball":
+                bullet = arcade.Sprite("pictures/2_bullet.png")
+                bullet.hp = gun.penetra
+                bullet.change_x = math.cos(angle) * BULLET_SPEED
+                bullet.change_y = math.sin(angle) * BULLET_SPEED
+                bullet.damage = gun.damage
+                arcade.play_sound(self.cannon_sound, volume=0.1)
 
             bullet.angle = math.degrees(angle)
             bullet.center_x = gun.center_x + math.cos(angle) * bullet.width/4
@@ -531,6 +543,7 @@ class MyGame(arcade.Window):
         tankette.bottom = GROUND/2
         tankette.hp = TANKETTE_HPS[size - 1]  # установление HP танкетки согласно ее размеру
         tankette.recharge_time = recharge_time
+        tankette.frame = 0
         self.ground_enemies.append(tankette)
         self.enemies.append(tankette)
 
@@ -633,30 +646,30 @@ class MyGame(arcade.Window):
 
             numbers = [0] * 5
             self.enemy_points += self.max_enemy_points
-            numbers[2] = random.randint(0, self.enemy_points // 2)
-            self.enemy_points -= numbers[2] * 2
-            numbers[4] = random.randint(0, self.enemy_points // 4)
-            self.enemy_points -= numbers[4] * 4
-            numbers[1] = random.randint(0, self.enemy_points // 1)
+            numbers[1] = random.randint(0, self.enemy_points // (1*2))
             self.enemy_points -= numbers[1]
+            numbers[4] = random.randint(0, self.enemy_points // (4*2))
+            self.enemy_points -= numbers[4] * 4
+            numbers[2] = self.enemy_points // 2
+            self.enemy_points -= numbers[2] * 2
 
-            for i in (1, 2, 4):
+            for size in (1, 2, 4):
                 # фиксируем размер
-                for elem in ENEMIES[i]:
-                    # фиксируем элемент
-                    current_number = random.randint(0, numbers[i])
+                for elem in ENEMIES[size]:
+                    # фиксируем тип врага фиксированного размера
+                    current_number = random.randint(0, 3 * numbers[size] // 4)
                     for _ in range(current_number):
-                        self.spawn_list.append([elem, i, random.randint(0, SPAWN_INTERVAL)])
-                    numbers[i] -= current_number
-                self.spawn_list.append([ENEMIES[i][len(ENEMIES[i])-1], i, random.randint(0, SPAWN_INTERVAL)])
-
+                        self.spawn_list.append([elem, size, random.randint(1, SPAWN_INTERVAL-1)])
+                    numbers[size] -= current_number
+                if numbers[size] > 0:
+                    self.spawn_list.append([ENEMIES[size][len(ENEMIES[size]) - 1], size, random.randint(0, SPAWN_INTERVAL)])
             self.spawn_timer = SPAWN_INTERVAL
-            self.max_enemy_points += 0.5
+            self.max_enemy_points += 1
         else:
             self.spawn_timer -= 1
-            for i in range(len(self.spawn_list)):
-                if self.spawn_timer == self.spawn_list[i][2]:
-                    eval("self.default_" + str(self.spawn_list[i][0]) + "_spawn(" + str(self.spawn_list[i][1]) + ")")
+            for enemy_str in self.spawn_list:
+                if self.spawn_timer == enemy_str[2]:
+                    eval("self.default_" + str(enemy_str[0]) + "_spawn(" + str(enemy_str[1]) + ")")
 
     def generate_money(self, enemy):
         for _ in range(random.randint(0, enemy.size)):
@@ -672,12 +685,13 @@ class MyGame(arcade.Window):
         if self.objects[0].hp + hp <= self.objects[0].max_hp and self.cash >= hp and not self.game_over:
             self.objects[0].hp += hp
             self.cash -= hp
-            arcade.play_sound(self.heal_sound, volume=0.2)
+            arcade.play_sound(self.heal_sound, volume=1)
 
     def upgrade(self):
         if len(upgrade_list_1) > 0:
             upgrade = random.choice(upgrade_list_1)
             upgrade_list_1.remove(upgrade)
+            arcade.play_sound(self.upgrade_sound, volume=1)
             if upgrade == 0:
                 lateral_weapons = arcade.Sprite("pictures/lateral_weapons.png")
                 lateral_weapons.center_x = self.objects[0].center_x
@@ -685,13 +699,16 @@ class MyGame(arcade.Window):
                 lateral_weapons.rate = 1/FPS
                 lateral_weapons.recharge_time = 30
                 self.ground_lateral_weapons.append(lateral_weapons)
-            if upgrade == 1 or 0:
+            elif upgrade == 1:
                 shield = arcade.Sprite("pictures/shield.png")
                 shield.center_x = self.objects[0].center_x
                 shield.bottom = self.objects[0].bottom
                 self.static_objects.append(shield)
                 self.objects[0].max_hp += 25
-                self.objects[0].hp = self.objects[0].max_hp
+                self.objects[0].hp += 25
+            elif upgrade == 2:
+                self.player_guns[0].texture = arcade.load_texture("pictures/initial_gun_upgraded.png")
+                self.player_guns[0].rate *= 2
 
 
 def main():
