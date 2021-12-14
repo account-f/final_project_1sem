@@ -30,7 +30,7 @@ ENEMIES[1] = ["tankette", "copter1", "copter2"]  # list of enemies which cost 1
 G_for_money = 1  # acceleration of gravity for money
 G_for_bullets = 0.1  # acceleration of gravity for bullets
 
-upgrade_list_1 = [0, 1, 2]
+upgrade_list_1 = [0, 1, 2, 3]
 
 # время:
 FPS = 60
@@ -264,6 +264,8 @@ class MyGame(arcade.Window):
                 enemy.time += 1
                 if enemy.hp <= 0:
                     self.generate_money(enemy)
+                    if len(self.moneys) >= 10:
+                        self.screen_text("DON'T FORGET COLLET DETAILS!")
                     # удаление танкетки при отсутствии у нее HP:
                     enemy.remove_from_sprite_lists()
                     self.score += enemy.size  # начисление очков в зависимости от размера врага
@@ -727,6 +729,9 @@ class MyGame(arcade.Window):
                 self.player_guns[0].damage *= 2
                 self.player_guns[0].fire_type = "ball2"
                 self.screen_text("GUN UPGRADED! DAMAGE IMPROVED")
+            elif upgrade == 3:
+                self.player_guns[0].autofire = True
+                self.screen_text("GUN UPGRADED! AUTOFIRE MODE UNLOCKED:\nHOLD MOUSE BUTTON FOR FIRE")
 
     def screen_text(self, text):
         """
