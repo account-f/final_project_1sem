@@ -27,8 +27,8 @@ ENEMIES[4] = ["tankette"]
 ENEMIES[2] = ["tankette", "drone"]
 ENEMIES[1] = ["tankette", "copter1", "copter2"]  # list of enemies which cost 1
 
-G_for_money = 1  # acceleration of gravity for money
-G_for_bullets = 0.1  # acceleration of gravity for bullets
+G_for_money = 1  # gravitational acceleration for money
+G_for_bullets = 0.1  # gravitational acceleration for bullets
 
 upgrade_list_1 = [0, 1, 2, 3]
 
@@ -98,21 +98,25 @@ class MyGame(arcade.Window):
         self.upgrade_sound = arcade.load_sound("sounds/upgrade.mp3", False)
         self.cannon_sound = arcade.load_sound("sounds/cannon_fire.mp3", False)
 
-        self.background = arcade.Sprite("pictures/desert.png")  # фон
+        # инициализация фона и установка его координат:
+        self.background = arcade.Sprite("pictures/desert.png")  # background picture
         self.background.center_x = SCREEN_WIDTH/2
         self.background.center_y = SCREEN_HEIGHT/2
 
         self.max_enemy_points = 5  # initial number of enemy points, using to spawn
         self.mouse_pressed_test = False  # variable checks if key button IS pressed
 
+        # настройка предигрового меню:
         menu = True
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
         self.v_box = arcade.gui.UIBoxLayout()
 
+        # добавление кнопки старта:
         start_button = StartButton(text='Start', width=200)
         self.v_box.add(start_button.with_space_around(bottom=20))
 
+        # кнопки выхода:
         quit_button = QuitButton(text="Quit", width=200)
         self.v_box.add(quit_button)
 
@@ -125,6 +129,7 @@ class MyGame(arcade.Window):
 
     def setup(self):
         """ Set up the game and initialize the variables """
+        # фоновый звук:
         arcade.play_sound(self.main_sound, volume=0.2, looping=True)
 
         # инициализация различных списков:
@@ -163,6 +168,7 @@ class MyGame(arcade.Window):
         initial_gun.recharge_time = 0
         self.player_guns.append(initial_gun)
 
+        # инициализация таблицы денег:
         cash_icon = arcade.Sprite("pictures/money_icon.png")
         cash_icon.center_x = SCREEN_WIDTH/2 - 100 - cash_icon.width
         cash_icon.center_y = SCREEN_HEIGHT - 40 + cash_icon.height/2
@@ -225,7 +231,7 @@ class MyGame(arcade.Window):
                              width=SCREEN_WIDTH, align="center")
 
     def on_update(self, delta_time):
-        """ Вся логика игры здесь. """
+        """ Вся логика игры здесь """
         if not self.game_over and not menu:
 
             # обновление счетчика кадров и таймера для текста:
@@ -256,7 +262,7 @@ class MyGame(arcade.Window):
                 if (bullet.bottom < GROUND/2 or bullet.top > SCREEN_HEIGHT
                         or bullet.right < 0 or bullet.left > SCREEN_WIDTH
                         or bullet.hp <= 0):
-                    # удаление пули при ее покидании экрана и/или отсутствии HP
+                    # удаление пули при ее покидании экрана и/или отсутствии HP:
                     bullet.remove_from_sprite_lists()
                 bullet.change_y -= G_for_bullets
 
@@ -343,7 +349,7 @@ class MyGame(arcade.Window):
                         boom.remove_from_sprite_lists()
 
             for object in self.objects:
-                # обновление HP игрока и замена текстуры холма при его занулении
+                # обновление HP игрока и замена текстуры холма при его занулении:
                 hit_list = arcade.check_for_collision_with_list(object, self.enemy_bullet_list)
                 for bullet in hit_list:
                     object.hp -= bullet.size
@@ -351,13 +357,14 @@ class MyGame(arcade.Window):
                     bullet.remove_from_sprite_lists()
 
                 if object.hp <= 0:
-                    # замена картинки холма при достижении нулевого HP игроком
+                    # замена картинки холма при достижении нулевого HP игроком:
                     object.texture = arcade.load_texture("pictures/pillbox_destructed.png")
                     object.hp = 0
                     arcade.play_sound(self.end_of_game, volume=0.7)
                     self.game_over = True
                     print("Your score: ", self.score)
 
+            # money rules (movement and scoring system):
             for money in self.moneys:
                 if money.caught_up is False:
                     money.change_y -= G_for_money
@@ -365,11 +372,13 @@ class MyGame(arcade.Window):
                     money.change_x = 0
                     money.change_y = 0
                 if math.dist([mouse_x, mouse_y], [money.center_x, money.center_y]) <= 20:
+                    # picking up money with the mouse:
                     angle = math.atan2(self.icons[0].center_y - money.center_y, self.icons[0].center_x - money.center_x)
                     money.change_x = math.cos(angle) * 32
                     money.change_y = math.sin(angle) * 32
                     money.caught_up = True
                 if math.dist([self.icons[0].center_x, self.icons[0].center_y], [money.center_x, money.center_y]) <= 20:
+                    # adding to the cash & main score with the money having approached the cash icon:
                     self.cash += 1
                     self.score += 1
                     if self.cash >= 10 and self.health_hint_marker is False:
@@ -384,11 +393,12 @@ class MyGame(arcade.Window):
             if (self.frame_count + 2) % (SPAWN_INTERVAL) == 0:
                 self.upgrade()
 
+            # bullet movement:
             for bullet in self.enemy_bullet_list:
                 if (bullet.bottom < GROUND/2 or bullet.top > SCREEN_HEIGHT
                         or bullet.right < 0 or bullet.left > SCREEN_WIDTH):
                     bullet.remove_from_sprite_lists()
-                bullet.change_y -= G_for_bullets
+                bullet.change_y -= G_for_bullets  # bullet velocity change caused by gravity
 
             # обновление объектов игры:
             self.moneys.update()
@@ -442,7 +452,7 @@ class MyGame(arcade.Window):
         Makes enemy firing: creates bullets if enemy is aimed and keep aiming if not
         :param enemy: firing enemy
         """
-        if enemy.recharge_time == 0:
+        if enemy.recharge_time == 0:  # проверка счетчика времени перезарядки
             delta_angle = random.randint(-20, 20)  # разброс выстрела
 
             bullet = arcade.Sprite("pictures/" + str(enemy.size) + "_bullet.png", 1)
@@ -466,12 +476,12 @@ class MyGame(arcade.Window):
 
     def player_fire(self, gun):
         """
-        Realizes player's firing and aiming
         Осуществляет огонь и перезарядку со стороны игрока
         :param gun: какая пушка стреляет
         """
+        global bullet
         if gun.recharge_time <= 0:
-            # создание пули и помещение ее в список пуль игрока
+            # создание пули и помещение ее в список пуль игрока:
             angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
             if gun.fire_type == "laser":
                 bullet = arcade.Sprite(":resources:images/space_shooter/laserBlue01.png")
@@ -494,6 +504,7 @@ class MyGame(arcade.Window):
                 bullet.change_y = math.sin(angle) * BULLET_SPEED
                 arcade.play_sound(self.cannon_sound, volume=0.1)
 
+            # setting up other bullet's parameters:
             bullet.hp = gun.penetra
             bullet.damage = gun.damage
             bullet.angle = math.degrees(angle)
@@ -704,6 +715,7 @@ class MyGame(arcade.Window):
             arcade.play_sound(self.heal_sound, volume=1)
 
     def upgrade(self):
+        # обновление (согласно уровням) и вывод сопутствующего сообщения на экране:
         if len(upgrade_list_1) > 0:
             upgrade = random.choice(upgrade_list_1)
             upgrade_list_1.remove(upgrade)
@@ -735,7 +747,7 @@ class MyGame(arcade.Window):
 
     def screen_text(self, text):
         """
-        Helps print text on the screen
+        Печать текста на экране
         :param text: text printing on the screen
         """
         self.text = text
