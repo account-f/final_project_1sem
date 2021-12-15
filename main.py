@@ -115,6 +115,8 @@ class MyGame(arcade.Window):
         self.heal_sound = arcade.load_sound("sounds/heal.mp3", False)
         self.upgrade_sound = arcade.load_sound("sounds/upgrade.mp3", False)
         self.cannon_sound = arcade.load_sound("sounds/cannon_fire.mp3", False)
+        self.coin_sound = arcade.load_sound("sounds/coin_pickup.wav", False)
+        self.coin_score = arcade.load_sound("sounds/coin_score.wav", False)
 
         # инициализация фона и установка его координат:
         self.background = arcade.Sprite("pictures/desert.png")  # фоновый рисунок
@@ -391,12 +393,14 @@ class MyGame(arcade.Window):
                     money.change_y = 0
                 if math.dist([mouse_x, mouse_y], [money.center_x, money.center_y]) <= 20:
                     # собирание монет мышкой:
+                    arcade.play_sound(self.coin_sound, volume=0.3)
                     angle = math.atan2(self.icons[0].center_y - money.center_y, self.icons[0].center_x - money.center_x)
                     money.change_x = math.cos(angle) * 32
                     money.change_y = math.sin(angle) * 32
                     money.caught_up = True
                 if math.dist([self.icons[0].center_x, self.icons[0].center_y], [money.center_x, money.center_y]) <= 20:
                     # добавление к общему счёту и счёту игры деталей, достигнувших иконку:
+                    arcade.play_sound(self.coin_score, volume=0.2)
                     self.cash += 1
                     self.score += 1
                     if (not self.health_hint_marker and self.cash >= 10
