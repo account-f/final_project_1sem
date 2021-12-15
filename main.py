@@ -11,49 +11,67 @@ SCREEN_TITLE = "Turret"
 mouse_x = 0
 mouse_y = 0
 GROUND = 80  # высота земли
+menu = True
+started = False
 
 # объекты:
 BULLET_SPEED = 48  # полная скорость пули
 TANKETTE_VELOCITIES = [2, 1.5, 0, 1]  # полные скорости танкеток (в соответствии с размером)
-TANKETTE_HPS = [4, 8, 0, 12]
+TANKETTE_HPS = [4, 8, 0, 12]  # жизни танкеток
 DRONE_VELOCITY = 2.5  # полная скорость дрона
 COPTER_VELOCITY = 3  # полная скорости коптера
-COPTER_HPS = [3, 6]
+COPTER_HPS = [3, 6]  # жизни дронов
 BULLET_PENETRA = 3  # HP пули главной пушки
-TOLERANCE = SCREEN_WIDTH / 10
+TOLERANCE = SCREEN_WIDTH / 10  # величина отклонения, использующаяся для корректной вражеской атаки
 
 ENEMIES = [0] * 5
-ENEMIES[4] = ["tankette"]
-ENEMIES[2] = ["tankette", "drone"]
-ENEMIES[1] = ["tankette", "copter1", "copter2"]  # list of enemies which cost 1
+ENEMIES[4] = ["tankette"]  # список врагов 'стоимостью' и размера 4
+ENEMIES[2] = ["tankette", "drone"]  # список врагов 'стоимостью' и размера 2
+ENEMIES[1] = ["tankette", "copter1", "copter2"]  # список врагов 'стоимостью' и размера 1
 
-G_for_money = 1  # gravitational acceleration for money
-G_for_bullets = 0.1  # gravitational acceleration for bullets
+G_for_money = 1  # ускорение свободного падения для деталек
+G_for_bullets = 0.1  # ускорение свободного падения для пуль
 
 upgrade_list_1 = [0, 1, 2, 3]
 
 # время:
 FPS = 60
-FPB = 4  # frames per one texture image of explosion
-SPAWN_INTERVAL = FPS*10  # time interval for one spawn cycle
+FPB = 4  # переменная, устанавливающая частоту смену кадров анимации взрыва
+SPAWN_INTERVAL = FPS*10  # интервал времени, отводящийся на один цикл 'спавна'
 
 
 class QuitButton(arcade.gui.UIFlatButton):
+    """ Класс описывает поведение кнопки выхода в меню """
     def on_click(self, event: arcade.gui.UIOnClickEvent):
+        """
+        Вызывается при нажатии
+        :param event: событие, при котором функция вызывается
+        """
         arcade.exit()
 
 
 class StartButton(arcade.gui.UIFlatButton):
+    """ Класс описывает поведение кнопки старта в меню """
     def on_click(self, event: arcade.gui.UIOnClickEvent):
-        global menu
+        """
+        Вызывается при нажатии
+        :param event: событие, при котором функция вызывается
+        """
+        global menu, started
         menu = False
-        self.text = 'Resume'
+        started = True
 
 
 class MyGame(arcade.Window):
-    """ Main application class """
+    """ Основной класс программы """
 
     def __init__(self, width, height, title):
+        """
+        Конструктор класса MyGame: создаёт окно с игрой
+        :param width: ширина окна
+        :param height: высота окна
+        :param title: надпись на окне - название игры
+        """
         super().__init__(width, height, title)
         global menu
 
@@ -68,8 +86,8 @@ class MyGame(arcade.Window):
         self.enemy_points = 0  # текущее значение очков врага
         self.spawn_timer = 0  # таймер, по которому рассчитывается спавн врагов
         self.cash = 0  # счётчик валюты
-        self.text = "start"
-        self.text_time = -1  # timer for text
+        self.text = ""
+        self.text_time = -1  # таймер для корректного отображения текста
         self.health_hint_marker = False
 
         self.icons = None  # иконки
@@ -86,7 +104,7 @@ class MyGame(arcade.Window):
         self.player_guns = None  # наводящиеся пушки игрока
         self.guns = None  # пушки врагов
         self.booms = None  # список действующих анимаций взрывов
-        self.spawn_list = []  # list contains name of enemy, size and random time of spawn
+        self.spawn_list = []  # список, по ходу игры содержащий наименование врага, размер и время спавна
 
         # инициализация звуков
         self.main_sound = arcade.load_sound("sounds/background.m4a", False)
@@ -99,7 +117,7 @@ class MyGame(arcade.Window):
         self.cannon_sound = arcade.load_sound("sounds/cannon_fire.mp3", False)
 
         # инициализация фона и установка его координат:
-        self.background = arcade.Sprite("pictures/desert.png")  # background picture
+        self.background = arcade.Sprite("pictures/desert.png")  # фоновый рисунок
         self.background.center_x = SCREEN_WIDTH/2
         self.background.center_y = SCREEN_HEIGHT/2
 
@@ -129,7 +147,7 @@ class MyGame(arcade.Window):
 
     def setup(self):
         """ Set up the game and initialize the variables """
-        # фоновый звук:
+        # фоновая музыка:
         arcade.play_sound(self.main_sound, volume=0.2, looping=True)
 
         # инициализация различных списков:
@@ -164,23 +182,25 @@ class MyGame(arcade.Window):
         initial_gun.penetra = 1
         initial_gun.fire_type = "ball"
         initial_gun.autofire = False
-        initial_gun.rate = 2/FPS  # fire rate: number of created bullets per FPS screen updates
+        initial_gun.rate = 2/FPS  # скорострельность: создаёт 2 пули за характерное время FPS
         initial_gun.recharge_time = 0
         self.player_guns.append(initial_gun)
 
-        # инициализация таблицы денег:
+        # инициализация иконки деталей:
         cash_icon = arcade.Sprite("pictures/money_icon.png")
         cash_icon.center_x = SCREEN_WIDTH/2 - 100 - cash_icon.width
         cash_icon.center_y = SCREEN_HEIGHT - 40 + cash_icon.height/2
         self.icons.append(cash_icon)
 
     def on_draw(self):
-        """ Render the screen """
+        """ Отрисовывание экрана """
 
         if menu:
             self.manager.draw()
             return None
         else:
+            if started:
+                self.manager.disable()
             arcade.start_render()
 
         # рисование фона и земли:
@@ -197,9 +217,7 @@ class MyGame(arcade.Window):
         self.static_objects.draw()
         self.enemy_bullet_list.draw()
         self.player_guns.draw()
-        self.ground_enemies.draw()
-        self.air_enemies.draw()
-        self.enemy_kamikaze.draw()
+        self.enemies.draw()
         self.guns.draw()
         self.booms.draw()
 
@@ -340,10 +358,10 @@ class MyGame(arcade.Window):
                 # анимация взрыва:
                 boom.count += 1
                 if boom.count % FPB == 0:
-                    # updates every FPB frames
+                    # обновляется каждые FPB кадров
                     file = "pictures/boom" + str(boom.count // FPB) + ".png"
                     if os.path.exists(file):
-                        # file named as boom1, boom2 etc; this checks existing in agreement with boom.count
+                        # файлы наз. boom1, boom2 итд; условие проверяет существование файла и изменяет текстуру
                         boom.texture = arcade.load_texture(file)
                     else:
                         boom.remove_from_sprite_lists()
@@ -364,7 +382,7 @@ class MyGame(arcade.Window):
                     self.game_over = True
                     print("Your score: ", self.score)
 
-            # money rules (movement and scoring system):
+            # поведение и система начисление деталей:
             for money in self.moneys:
                 if money.caught_up is False:
                     money.change_y -= G_for_money
@@ -372,16 +390,17 @@ class MyGame(arcade.Window):
                     money.change_x = 0
                     money.change_y = 0
                 if math.dist([mouse_x, mouse_y], [money.center_x, money.center_y]) <= 20:
-                    # picking up money with the mouse:
+                    # собирание монет мышкой:
                     angle = math.atan2(self.icons[0].center_y - money.center_y, self.icons[0].center_x - money.center_x)
                     money.change_x = math.cos(angle) * 32
                     money.change_y = math.sin(angle) * 32
                     money.caught_up = True
                 if math.dist([self.icons[0].center_x, self.icons[0].center_y], [money.center_x, money.center_y]) <= 20:
-                    # adding to the cash & main score with the money having approached the cash icon:
+                    # добавление к общему счёту и счёту игры деталей, достигнувших иконку:
                     self.cash += 1
                     self.score += 1
-                    if self.cash >= 10 and self.health_hint_marker is False:
+                    if (not self.health_hint_marker and self.cash >= 10
+                            and self.objects[0].max_hp - self.objects[0].hp >= 10):
                         self.screen_text("PRESS H TO HEAL FOR 10 DETAILS")
                         self.health_hint_marker = True
                     money.remove_from_sprite_lists()
@@ -390,15 +409,15 @@ class MyGame(arcade.Window):
                 if len(self.ground_enemies) > 0:
                     self.horizontal_lateral_weapons_fire(gun)
 
-            if (self.frame_count + 2) % (SPAWN_INTERVAL) == 0:
+            if (self.frame_count + 2) % SPAWN_INTERVAL == 0:
                 self.upgrade()
 
-            # bullet movement:
-            for bullet in self.enemy_bullet_list:
-                if (bullet.bottom < GROUND/2 or bullet.top > SCREEN_HEIGHT
-                        or bullet.right < 0 or bullet.left > SCREEN_WIDTH):
-                    bullet.remove_from_sprite_lists()
-                bullet.change_y -= G_for_bullets  # bullet velocity change caused by gravity
+            # движение пули:
+            for enemy_bullet in self.enemy_bullet_list:
+                if (enemy_bullet.bottom < GROUND/2 or enemy_bullet.top > SCREEN_HEIGHT
+                        or enemy_bullet.right < 0 or enemy_bullet.left > SCREEN_WIDTH):
+                    enemy_bullet.remove_from_sprite_lists()
+                enemy_bullet.change_y -= G_for_bullets  # скорость пули меняется из-за гравитации
 
             # обновление объектов игры:
             self.moneys.update()
@@ -436,7 +455,7 @@ class MyGame(arcade.Window):
             self.player_guns[0].damage = 2
             self.player_guns[0].penetra = 3
             self.player_guns[0].autofire = False
-            self.player_guns[0].rate = 2/FPS  # fire rate: number of created bullets per FPS screen updates
+            self.player_guns[0].rate = 2/FPS  # скорострельность
         if symbol == arcade.key.KEY_2:
             self.player_guns[0].texture = arcade.load_texture("pictures/machine_gun.png")
             self.player_guns[0].fire_type = "high_velocity_bullet"
@@ -449,8 +468,9 @@ class MyGame(arcade.Window):
 
     def fire(self, enemy):
         """
-        Makes enemy firing: creates bullets if enemy is aimed and keep aiming if not
-        :param enemy: firing enemy
+        Заставляет врага вести огонь, если оружие перезаряжено, иначе - продолжать перезаряжать оружие
+        При ведении огня создаёт пулю с координатами врага
+        :param enemy: враг, ведущий огонь
         """
         if enemy.recharge_time == 0:  # проверка счетчика времени перезарядки
             delta_angle = random.randint(-20, 20)  # разброс выстрела
@@ -477,9 +497,8 @@ class MyGame(arcade.Window):
     def player_fire(self, gun):
         """
         Осуществляет огонь и перезарядку со стороны игрока
-        :param gun: какая пушка стреляет
+        :param gun: пушка, которая стреляет
         """
-        global bullet
         if gun.recharge_time <= 0:
             # создание пули и помещение ее в список пуль игрока:
             angle = math.atan2(mouse_y - gun.center_y, mouse_x - gun.center_x)
@@ -517,9 +536,9 @@ class MyGame(arcade.Window):
 
     def horizontal_lateral_weapons_fire(self, weapon, double=True):
         """
-        Makes ground lateral weapon firing.
-        :param weapon: firing weapon:
-        :param double: if weapon id double and can fire in two sides
+        Заставляет горизонтальные боковые орудия вести огонь
+        :param weapon: стреляющее орудие
+        :param double: определяет, может ли оружие стрелять в обе стороны
         """
         if weapon.recharge_time == 0:
             if double is True:
@@ -535,25 +554,26 @@ class MyGame(arcade.Window):
         else:
             weapon.recharge_time -= 1
 
-    def create_boom(self, x, y, Vx, Vy):
+    def create_boom(self, x, y, vx, vy):
         """
-        Creates an explosion. boom.count helps for switching frames
-        :param x: x coordinate of center
-        :param y: y coordinate of center
-        :param Vx: velocity projection on the x-axis
-        :param Vy: velocity projection on the y-axis
+        Создаёт взрыв и присваивает ему переменную, помогающую анимировать взрыв. Сохраняет часть скорости врага
+        и меняет направление ближе к земле
+        :param x: x координата центра
+        :param y: y координата центра
+        :param vx: проекция скорости врага на ось x
+        :param vy:  проекция скорости врага на ось y
         """
         boom = arcade.Sprite("pictures/boom1.png")
-        boom.center_x = x + Vx
-        boom.center_y = y + Vy
-        boom.change_x = Vx/2  # keeps moving
-        boom.change_y = Vy/2 - 1  # and slowly falls down
+        boom.center_x = x + vx
+        boom.center_y = y + vy
+        boom.change_x = vx / 2
+        boom.change_y = vy / 2 - 1
         boom.count = FPB
         self.booms.append(boom)
 
     def default_tankette_spawn(self, size, recharge_time=0):
         """
-        Creates a tankette
+        Создаёт танкетку
         :param size: size using for creating bullets
         :param recharge_time: initial recharge time
         """
@@ -563,7 +583,7 @@ class MyGame(arcade.Window):
         tankette.file = file
         tankette.size = size
         tankette.direct = direct
-        tankette.time = 0  # initial existing time
+        tankette.time = 0  # начальное время существования
         tankette.change_x = direct * TANKETTE_VELOCITIES[size - 1]
         tankette.center_x = SCREEN_WIDTH/2 - direct * (SCREEN_WIDTH/2 + tankette.width)
         tankette.bottom = GROUND/2
@@ -575,8 +595,8 @@ class MyGame(arcade.Window):
 
     def default_drone_spawn(self, size):
         """
-        Creates a drone
-        :param size: size
+        Создаёт дрон-камикадзе
+        :param size: размер
         """
         direct = random.choice([1, -1])
         drone = arcade.Sprite("pictures/drone.png")
@@ -594,8 +614,8 @@ class MyGame(arcade.Window):
 
     def default_copter1_spawn(self, size):
         """
-        Creates a (heli)copter
-        :param size: size
+        Создаёт коптер
+        :param size: размер
         helicopter, helicopter
         """
         direct = random.choice([1, -1])
@@ -608,7 +628,7 @@ class MyGame(arcade.Window):
         copter.file = file
         copter.size = size
         copter.hp = COPTER_HPS[size - 1]
-        copter.time = 0  # initial existing time
+        copter.time = 0  # начальное время существования
 
         angle = math.atan2(self.objects[0].center_y - copter.center_y,
                            self.objects[0].center_x - copter.center_x)
@@ -631,9 +651,9 @@ class MyGame(arcade.Window):
 
     def default_copter2_spawn(self, size):
         """
-        Creates a (heli)copter using same function for other type.
-        Changes variables using sprite lists.
-        :param size: size
+        Создаёт коптер с другим поведением используя оригинальную функцию.
+        Чтобы изменить поведение уже созданного объекта, работает с последним добавленным в список врагом.
+        :param size: размер
         helicopter, helicopter
         """
         self.default_copter1_spawn(size)
@@ -648,10 +668,10 @@ class MyGame(arcade.Window):
     def next_frame(self, object, frames=2):
         """
         Анимирует объект путем регулярной замены его текстуры.
-        Takes info about current frame from filename.
-        Changes texture by changing number of frame in filename.
-        :param object: animating object
-        :param frames: number of frames of animation
+        Берёт информацию о текущем кадре из имени файла
+        Меняет текстуру, пересобирая имя файла с другим номером кадра
+        :param object: объект с зацикленной анимацией
+        :param frames: число кадров
         """
         number = int(object.file.split(" ")[1])
         if number + 1 == frames:
@@ -661,11 +681,10 @@ class MyGame(arcade.Window):
 
     def spawn(self):
         """
-        Increases the level of difficulty. Spawns enemies depending on the enemy_points
-        Big tankette "costs" 4 points, so game can generate it from 0 to 5, if enemy_points=20.
-        Next it generates enemies which costs 2 points using remained points.
-        If after all spawn there are points left, it goes to the next cycle.
-        Creates list of enemies which spawn at this cycle.
+        Увеличивает уровеень сложности, генерирует врагов в зависимости от max_enemy_points
+        Большая танкетка имеет размер 4, значит, заберёт 4 очка
+        Случайным образом выбирает набор врагов, суммарно по очкам не превосходящих max_enemy_points.
+        Генеририует список врагов, создающихся за текущий цикл спавна
         """
         if self.spawn_timer == 0:
             self.spawn_list = []
@@ -699,6 +718,10 @@ class MyGame(arcade.Window):
                     eval("self.default_" + str(enemy_str[0]) + "_spawn(" + str(enemy_str[1]) + ")")
 
     def generate_money(self, enemy):
+        """
+        Генерация деталей, выпадающих с поверженного врага
+        :param enemy: враг
+        """
         for _ in range(random.randint(0, enemy.size)):
             money = arcade.Sprite("pictures/money" + str(random.randint(1, 10)) + ".png")
             money.center_x = enemy.center_x
@@ -709,13 +732,20 @@ class MyGame(arcade.Window):
             self.moneys.append(money)
 
     def heal(self, hp):
+        """
+        Лечение - восстановление HP дота за собранные детали
+        :param hp: величина восстановления
+        """
         if self.objects[0].hp + hp <= self.objects[0].max_hp and self.cash >= hp and not self.game_over:
             self.objects[0].hp += hp
             self.cash -= hp
             arcade.play_sound(self.heal_sound, volume=1)
 
     def upgrade(self):
-        # обновление (согласно уровням) и вывод сопутствующего сообщения на экране:
+        """
+        Реализует улучшения пушки
+        Обновление (согласно уровням) и вывод сопутствующего сообщения на экране
+        """
         if len(upgrade_list_1) > 0:
             upgrade = random.choice(upgrade_list_1)
             upgrade_list_1.remove(upgrade)
@@ -748,14 +778,14 @@ class MyGame(arcade.Window):
     def screen_text(self, text):
         """
         Печать текста на экране
-        :param text: text printing on the screen
+        :param text: текст, рисующийся на экране
         """
         self.text = text
         self.text_time = FPS*3
 
 
 def main():
-    """ Main function """
+    """ Главная функция """
     window = MyGame(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
     window.setup()
     arcade.run()
