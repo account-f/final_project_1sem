@@ -3,7 +3,7 @@ import arcade.gui
 import random
 import math
 import os
-from constants import *
+import constants as const
 
 
 class QuitButton(arcade.gui.UIFlatButton):
@@ -86,13 +86,13 @@ class MyGame(arcade.Window):
 
         # инициализация фона и установка его координат:
         self.background = arcade.Sprite("pictures/desert.png")  # фоновый рисунок
-        self.background.center_x = SCREEN_WIDTH/2
-        self.background.center_y = SCREEN_HEIGHT/2
+        self.background.center_x = const.SCREEN_WIDTH/2
+        self.background.center_y = const.SCREEN_HEIGHT/2
 
         self.max_enemy_points = 5  # initial number of enemy points, using to spawn
         self.mouse_pressed_test = False  # variable checks if key button IS pressed
 
-        # настройка предигрового меню:
+        # настройка предыгрового меню:
         menu = True
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
@@ -114,9 +114,9 @@ class MyGame(arcade.Window):
         )
 
     def setup(self):
-        """ Set up the game and initialize the variables """
+        """ Настройка игры и инициализация переменных """
         # фоновая музыка:
-        arcade.play_sound(self.main_sound, volume=0.2, looping=True)
+        arcade.play_sound(self.main_sound, volume=0.1, looping=True)
 
         # инициализация различных списков:
         self.icons = arcade.SpriteList()
@@ -136,7 +136,7 @@ class MyGame(arcade.Window):
 
         # инициализация главного холма (с записью его расположения на экране и помещением в список objects):
         pillbox = arcade.Sprite("pictures/pillbox.png")
-        pillbox.center_x = SCREEN_WIDTH/2
+        pillbox.center_x = const.SCREEN_WIDTH/2
         pillbox.center_y = pillbox.height/2
         pillbox.max_hp = 50
         pillbox.hp = pillbox.max_hp
@@ -144,20 +144,20 @@ class MyGame(arcade.Window):
 
         # инициализация главной пушки (с записью ее расположения на экране и помещением в список player_guns):
         initial_gun = arcade.Sprite("pictures/initial_gun.png")
-        initial_gun.center_x = SCREEN_WIDTH/2
+        initial_gun.center_x = const.SCREEN_WIDTH/2
         initial_gun.center_y = pillbox.height + 4/9 * initial_gun.width
         initial_gun.damage = 1
         initial_gun.penetra = 1
         initial_gun.fire_type = "ball"
         initial_gun.autofire = False
-        initial_gun.rate = 2/FPS  # скорострельность: создаёт 2 пули за характерное время FPS
+        initial_gun.rate = 2/const.FPS  # скорострельность: создаёт 2 пули за характерное время FPS
         initial_gun.recharge_time = 0
         self.player_guns.append(initial_gun)
 
         # инициализация иконки деталей:
         cash_icon = arcade.Sprite("pictures/money_icon.png")
-        cash_icon.center_x = SCREEN_WIDTH/2 - 100 - cash_icon.width
-        cash_icon.center_y = SCREEN_HEIGHT - 40 + cash_icon.height/2
+        cash_icon.center_x = const.SCREEN_WIDTH/2 - 100 - cash_icon.width
+        cash_icon.center_y = const.SCREEN_HEIGHT - 40 + cash_icon.height/2
         self.icons.append(cash_icon)
 
     def on_draw(self):
@@ -173,8 +173,8 @@ class MyGame(arcade.Window):
 
         # рисование фона и земли:
         self.background.draw()
-        arcade.draw_rectangle_filled(SCREEN_WIDTH/2, GROUND/2, SCREEN_WIDTH, 8, (163, 109, 97))
-        arcade.draw_rectangle_filled(SCREEN_WIDTH/2, GROUND/4, SCREEN_WIDTH, GROUND/2, (226, 198, 131))
+        arcade.draw_rectangle_filled(const.SCREEN_WIDTH/2, const.GROUND/2, const.SCREEN_WIDTH, 8, (163, 109, 97))
+        arcade.draw_rectangle_filled(const.SCREEN_WIDTH/2, const.GROUND/4, const.SCREEN_WIDTH, const.GROUND/2, (226, 198, 131))
 
         # рисование различных объектов:
         self.icons.draw()
@@ -201,20 +201,20 @@ class MyGame(arcade.Window):
                              font_name="Kenney Future")
 
         # рисование текста со счётом и монетами:
-        arcade.draw_text("SCORE: " + str(self.score), SCREEN_WIDTH/2 + 100, SCREEN_HEIGHT - 40,
+        arcade.draw_text("SCORE: " + str(self.score), const.SCREEN_WIDTH/2 + 100, const.SCREEN_HEIGHT - 40,
                          arcade.color.FRENCH_WINE, 25, font_name="Kenney Future")
 
         if self.cash < 10:
-            arcade.draw_text(str(self.cash), SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT - 40,
+            arcade.draw_text(str(self.cash), const.SCREEN_WIDTH/2 - 100, const.SCREEN_HEIGHT - 40,
                              arcade.color.FRENCH_WINE, 25, font_name="Kenney Future")
         else:
-            arcade.draw_text(str(self.cash), SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT - 40,
+            arcade.draw_text(str(self.cash), const.SCREEN_WIDTH/2 - 100, const.SCREEN_HEIGHT - 40,
                              arcade.color.DARK_PASTEL_GREEN, 25, font_name="Kenney Future")
 
         if self.text_time >= 0:
-            arcade.draw_text(self.text, 0, 3 * SCREEN_HEIGHT / 4,
+            arcade.draw_text(self.text, 0, 3 * const.SCREEN_HEIGHT / 4,
                              arcade.color.WHITE, 25, font_name="Kenney Future",
-                             width=SCREEN_WIDTH, align="center")
+                             width=const.SCREEN_WIDTH, align="center")
 
     def on_update(self, delta_time):
         """ Вся логика игры здесь """
@@ -245,29 +245,29 @@ class MyGame(arcade.Window):
                     else:
                         bullet.remove_from_sprite_lists()
 
-                if (bullet.bottom < GROUND/2 or bullet.top > SCREEN_HEIGHT
-                        or bullet.right < 0 or bullet.left > SCREEN_WIDTH
+                if (bullet.bottom < const.GROUND/2 or bullet.top > const.SCREEN_HEIGHT
+                        or bullet.right < 0 or bullet.left > const.SCREEN_WIDTH
                         or bullet.hp <= 0):
                     # удаление пули при ее покидании экрана и/или отсутствии HP:
                     bullet.remove_from_sprite_lists()
-                bullet.change_y -= G_for_bullets
+                bullet.change_y -= const.G_for_bullets
 
             for enemy in self.ground_enemies:
                 enemy.time += 1
                 if enemy.hp <= 0:
                     self.generate_money(enemy)
                     if len(self.moneys) >= 10:
-                        self.screen_text("DON'T FORGET COLLET DETAILS!")
+                        self.screen_text("DON'T FORGET COLLECT DETAILS!")
                     # удаление танкетки при отсутствии у нее HP:
                     enemy.remove_from_sprite_lists()
                     self.score += enemy.size  # начисление очков в зависимости от размера врага
                 else:
-                    distance = abs(enemy.center_x - SCREEN_WIDTH / 2)
+                    distance = abs(enemy.center_x - const.SCREEN_WIDTH / 2)
 
                     # остановка танкетки на определенном расстоянии от холма (в зависимости от размера):
-                    if ((enemy.size == 1 and distance < SCREEN_WIDTH/6) or
-                            (enemy.size == 2 and distance < SCREEN_WIDTH/5) or
-                            (enemy.size == 4 and distance < SCREEN_WIDTH/4)):
+                    if ((enemy.size == 1 and distance < const.SCREEN_WIDTH/6) or
+                            (enemy.size == 2 and distance < const.SCREEN_WIDTH/5) or
+                            (enemy.size == 4 and distance < const.SCREEN_WIDTH/4)):
                         self.fire(enemy)
                         enemy.change_x = 0
 
@@ -283,22 +283,22 @@ class MyGame(arcade.Window):
                 else:
                     if enemy.time % 2 == 0:
                         self.next_frame(enemy, frames=6)
-                    if enemy.type == 2 and enemy.time >= FPS:
+                    if enemy.type == 2 and enemy.time >= const.FPS:
                         self.fire(enemy.gun)
                     if ((enemy.center_x - self.objects[0].center_x) ** 2 +
                             (enemy.center_y - self.objects[0].center_y) ** 2
-                            <= (SCREEN_HEIGHT / 3) ** 2):
+                            <= (const.SCREEN_HEIGHT / 3) ** 2):
                         enemy.change_x = 0
                         enemy.change_y = 0
                         enemy.gun.change_x = 0
                         enemy.gun.change_y = 0
                         self.fire(enemy.gun)
 
-                if (enemy.center_x < 0 or enemy.center_x > SCREEN_WIDTH or
-                        enemy.center_y < 0 or enemy.center_y > SCREEN_HEIGHT):
+                if (enemy.center_x < 0 or enemy.center_x > const.SCREEN_WIDTH or
+                        enemy.center_y < 0 or enemy.center_y > const.SCREEN_HEIGHT):
                     enemy.recharge_time = 10  # enemy.recharge_time can't reach 0 if enemy isn't on screen
-                if (enemy.center_x < - TOLERANCE or enemy.center_x > SCREEN_WIDTH + TOLERANCE or
-                        enemy.center_y < - TOLERANCE or enemy.center_y > SCREEN_HEIGHT + TOLERANCE):
+                if (enemy.center_x < - const.TOLERANCE or enemy.center_x > const.SCREEN_WIDTH + const.TOLERANCE or
+                        enemy.center_y < - const.TOLERANCE or enemy.center_y > const.SCREEN_HEIGHT + const.TOLERANCE):
                     enemy.remove_from_sprite_lists()
                     if hasattr("enemy", "gun") is True:
                         enemy.gun.remove_from_sprite_lists()
@@ -325,9 +325,9 @@ class MyGame(arcade.Window):
             for boom in self.booms:
                 # анимация взрыва:
                 boom.count += 1
-                if boom.count % FPB == 0:
+                if boom.count % const.FPB == 0:
                     # обновляется каждые FPB кадров
-                    file = "pictures/boom" + str(boom.count // FPB) + ".png"
+                    file = "pictures/boom" + str(boom.count // const.FPB) + ".png"
                     if os.path.exists(file):
                         # файлы наз. boom1, boom2 итд; условие проверяет существование файла и изменяет текстуру
                         boom.texture = arcade.load_texture(file)
@@ -353,8 +353,8 @@ class MyGame(arcade.Window):
             # поведение и система начисление деталей:
             for money in self.moneys:
                 if money.caught_up is False:
-                    money.change_y -= G_for_money
-                if money.bottom <= GROUND/2 + 4:
+                    money.change_y -= const.G_for_money
+                if money.bottom <= const.GROUND/2 + 4:
                     money.change_x = 0
                     money.change_y = 0
                 if math.dist([mouse_x, mouse_y], [money.center_x, money.center_y]) <= 20:
@@ -379,15 +379,15 @@ class MyGame(arcade.Window):
                 if len(self.ground_enemies) > 0:
                     self.horizontal_lateral_weapons_fire(gun)
 
-            if (self.frame_count + 2) % SPAWN_INTERVAL == 0:
+            if (self.frame_count + 2) % const.SPAWN_INTERVAL == 0:
                 self.upgrade()
 
             # движение пули:
             for enemy_bullet in self.enemy_bullet_list:
-                if (enemy_bullet.bottom < GROUND/2 or enemy_bullet.top > SCREEN_HEIGHT
-                        or enemy_bullet.right < 0 or enemy_bullet.left > SCREEN_WIDTH):
+                if (enemy_bullet.bottom < const.GROUND/2 or enemy_bullet.top > const.SCREEN_HEIGHT
+                        or enemy_bullet.right < 0 or enemy_bullet.left > const.SCREEN_WIDTH):
                     enemy_bullet.remove_from_sprite_lists()
-                enemy_bullet.change_y -= G_for_bullets  # скорость пули меняется из-за гравитации
+                enemy_bullet.change_y -= const.G_for_bullets  # скорость пули меняется из-за гравитации
 
             # обновление объектов игры:
             self.moneys.update()
@@ -425,14 +425,14 @@ class MyGame(arcade.Window):
             self.player_guns[0].damage = 2
             self.player_guns[0].penetra = 3
             self.player_guns[0].autofire = False
-            self.player_guns[0].rate = 2/FPS  # скорострельность
+            self.player_guns[0].rate = 2 / const.FPS  # скорострельность
         if symbol == arcade.key.KEY_2:
             self.player_guns[0].texture = arcade.load_texture("pictures/machine_gun.png")
             self.player_guns[0].fire_type = "high_velocity_bullet"
             self.player_guns[0].damage = 1
             self.player_guns[0].penetra = 1
             self.player_guns[0].autofire = True
-            self.player_guns[0].rate = 10/FPS
+            self.player_guns[0].rate = 10 / const.FPS
         if symbol == arcade.key.H:
             self.heal(10)
 
@@ -452,8 +452,8 @@ class MyGame(arcade.Window):
             angle = math.atan2(enemy.center_y - self.objects[0].center_y,
                                enemy.center_x - self.objects[0].center_x) + delta_angle * math.pi / 180
             bullet.angle = math.degrees(angle)
-            bullet.change_x = - math.cos(angle) * BULLET_SPEED
-            bullet.change_y = - math.sin(angle) * BULLET_SPEED
+            bullet.change_x = - math.cos(angle) * const.BULLET_SPEED
+            bullet.change_y = - math.sin(angle) * const.BULLET_SPEED
             if enemy.size == 1:
                 enemy.recharge_time = 30
             elif enemy.size == 2:
@@ -475,8 +475,8 @@ class MyGame(arcade.Window):
             if gun.fire_type == "laser":
                 bullet = arcade.Sprite(":resources:images/space_shooter/laserBlue01.png")
                 arcade.play_sound(self.laser_sound, volume=2)
-                bullet.change_x = math.cos(angle) * BULLET_SPEED
-                bullet.change_y = math.sin(angle) * BULLET_SPEED
+                bullet.change_x = math.cos(angle) * const.BULLET_SPEED
+                bullet.change_y = math.sin(angle) * const.BULLET_SPEED
             elif gun.fire_type == "high_velocity_bullet":
                 bullet = arcade.Sprite("pictures/high_velocity_bullet.png")
                 bullet.change_x = math.cos(angle) * 128
@@ -484,13 +484,13 @@ class MyGame(arcade.Window):
                 arcade.play_sound(self.minigun_sound, volume=0.1)
             elif gun.fire_type == "ball":
                 bullet = arcade.Sprite("pictures/2_bullet.png")
-                bullet.change_x = math.cos(angle) * BULLET_SPEED
-                bullet.change_y = math.sin(angle) * BULLET_SPEED
+                bullet.change_x = math.cos(angle) * const.BULLET_SPEED
+                bullet.change_y = math.sin(angle) * const.BULLET_SPEED
                 arcade.play_sound(self.cannon_sound, volume=0.1)
             elif gun.fire_type == "ball2":
                 bullet = arcade.Sprite("pictures/4_bullet.png")
-                bullet.change_x = math.cos(angle) * BULLET_SPEED
-                bullet.change_y = math.sin(angle) * BULLET_SPEED
+                bullet.change_x = math.cos(angle) * const.BULLET_SPEED
+                bullet.change_y = math.sin(angle) * const.BULLET_SPEED
                 arcade.play_sound(self.cannon_sound, volume=0.1)
 
             # setting up other bullet's parameters:
@@ -538,7 +538,7 @@ class MyGame(arcade.Window):
         boom.center_y = y + vy
         boom.change_x = vx / 2
         boom.change_y = vy / 2 - 1
-        boom.count = FPB
+        boom.count = const.FPB
         self.booms.append(boom)
 
     def default_tankette_spawn(self, size, recharge_time=0):
@@ -554,10 +554,10 @@ class MyGame(arcade.Window):
         tankette.size = size
         tankette.direct = direct
         tankette.time = 0  # начальное время существования
-        tankette.change_x = direct * TANKETTE_VELOCITIES[size - 1]
-        tankette.center_x = SCREEN_WIDTH/2 - direct * (SCREEN_WIDTH/2 + tankette.width)
-        tankette.bottom = GROUND/2
-        tankette.hp = TANKETTE_HPS[size - 1]  # установление HP танкетки согласно ее размеру
+        tankette.change_x = direct * const.TANKETTE_VELOCITIES[size - 1]
+        tankette.center_x = const.SCREEN_WIDTH/2 - direct * (const.SCREEN_WIDTH/2 + tankette.width)
+        tankette.bottom = const.GROUND/2
+        tankette.hp = const.TANKETTE_HPS[size - 1]  # установление HP танкетки согласно ее размеру
         tankette.recharge_time = recharge_time
         tankette.frame = 0
         self.ground_enemies.append(tankette)
@@ -571,11 +571,11 @@ class MyGame(arcade.Window):
         direct = random.choice([1, -1])
         drone = arcade.Sprite("pictures/drone.png")
         drone.size = size
-        drone.center_x = SCREEN_WIDTH/2 - direct * (SCREEN_WIDTH/2 + drone.width)
-        drone.top = random.randint(SCREEN_HEIGHT//2, SCREEN_HEIGHT)
+        drone.center_x = const.SCREEN_WIDTH/2 - direct * (const.SCREEN_WIDTH/2 + drone.width)
+        drone.top = random.randint(const.SCREEN_HEIGHT//2, const.SCREEN_HEIGHT)
         angle = math.atan2(drone.center_y - self.objects[0].center_y, drone.center_x - self.objects[0].center_x)
-        drone.change_x = - DRONE_VELOCITY * math.cos(angle)
-        drone.change_y = - DRONE_VELOCITY * math.sin(angle)
+        drone.change_x = - const.DRONE_VELOCITY * math.cos(angle)
+        drone.change_y = - const.DRONE_VELOCITY * math.sin(angle)
         drone.hp = 1
 
         # добавление дрона к соответствующим спискам врагов:
@@ -592,19 +592,19 @@ class MyGame(arcade.Window):
         file = "pictures/" + str(size) + "_copter 0 .png"
         copter = arcade.Sprite(file)
         copter.type = 1
-        copter.center_x = SCREEN_WIDTH/2 - direct * (SCREEN_WIDTH/2 + copter.width)
-        copter.top = random.randint(SCREEN_HEIGHT//2, SCREEN_HEIGHT)
+        copter.center_x = const.SCREEN_WIDTH/2 - direct * (const.SCREEN_WIDTH/2 + copter.width)
+        copter.top = random.randint(const.SCREEN_HEIGHT//2, const.SCREEN_HEIGHT)
         copter.direct = direct
         copter.file = file
         copter.size = size
-        copter.hp = COPTER_HPS[size - 1]
+        copter.hp = const.COPTER_HPS[size - 1]
         copter.time = 0  # начальное время существования
 
         angle = math.atan2(self.objects[0].center_y - copter.center_y,
                            self.objects[0].center_x - copter.center_x)
 
-        copter.change_x = COPTER_VELOCITY * math.cos(angle)
-        copter.change_y = COPTER_VELOCITY * math.sin(angle)
+        copter.change_x = const.COPTER_VELOCITY * math.cos(angle)
+        copter.change_y = const.COPTER_VELOCITY * math.sin(angle)
 
         copter.gun = arcade.Sprite("pictures/gun1.png")
         copter.gun.size = 1
@@ -628,7 +628,7 @@ class MyGame(arcade.Window):
         """
         self.default_copter1_spawn(size)
 
-        self.air_enemies[-1].change_x = COPTER_VELOCITY * self.air_enemies[-1].direct
+        self.air_enemies[-1].change_x = const.COPTER_VELOCITY * self.air_enemies[-1].direct
         self.air_enemies[-1].change_y = 0
 
         self.air_enemies[-1].gun.change_x = self.air_enemies[-1].change_x
@@ -670,16 +670,16 @@ class MyGame(arcade.Window):
 
             for size in (1, 2, 4):
                 # фиксируем размер
-                for elem in ENEMIES[size]:
+                for elem in const.ENEMIES[size]:
                     # фиксируем тип врага фиксированного размера
                     current_number = random.randint(0, 3 * numbers[size] // 4)
                     for _ in range(current_number):
-                        self.spawn_list.append([elem, size, random.randint(1, SPAWN_INTERVAL-1)])
+                        self.spawn_list.append([elem, size, random.randint(1, const.SPAWN_INTERVAL - 1)])
                     numbers[size] -= current_number
                 if numbers[size] > 0:
-                    self.spawn_list.append([ENEMIES[size][len(ENEMIES[size]) - 1],
-                                            size, random.randint(0, SPAWN_INTERVAL)])
-            self.spawn_timer = SPAWN_INTERVAL
+                    self.spawn_list.append([const.ENEMIES[size][len(const.ENEMIES[size]) - 1],
+                                            size, random.randint(0, const.SPAWN_INTERVAL)])
+            self.spawn_timer = const.SPAWN_INTERVAL
             self.max_enemy_points += 3
         else:
             self.spawn_timer -= 1
@@ -716,15 +716,15 @@ class MyGame(arcade.Window):
         Реализует улучшения пушки
         Обновление (согласно уровням) и вывод сопутствующего сообщения на экране
         """
-        if len(upgrade_list_1) > 0:
-            upgrade = random.choice(upgrade_list_1)
-            upgrade_list_1.remove(upgrade)
+        if len(const.upgrade_list_1) > 0:
+            upgrade = random.choice(const.upgrade_list_1)
+            const.upgrade_list_1.remove(upgrade)
             arcade.play_sound(self.upgrade_sound, volume=1)
             if upgrade == 0:
                 lateral_weapons = arcade.Sprite("pictures/lateral_weapons.png")
                 lateral_weapons.center_x = self.objects[0].center_x
-                lateral_weapons.center_y = GROUND/2 + 32
-                lateral_weapons.rate = 1/FPS
+                lateral_weapons.center_y = const.GROUND/2 + 32
+                lateral_weapons.rate = 1 / const.FPS
                 lateral_weapons.recharge_time = 30
                 self.ground_lateral_weapons.append(lateral_weapons)
                 self.screen_text("WEAPONS UPGRADED!")
@@ -751,4 +751,4 @@ class MyGame(arcade.Window):
         :param text: текст, рисующийся на экране
         """
         self.text = text
-        self.text_time = FPS*3
+        self.text_time = const.FPS*3

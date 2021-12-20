@@ -1,11 +1,12 @@
-from mygame import *
+import mygame
+import constants as const
 
 
 def main():
     """ Главная функция """
-    window = MyGame(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    window = mygame.MyGame(const.SCREEN_WIDTH, const.SCREEN_HEIGHT, const.SCREEN_TITLE)
     window.setup()
-    arcade.run()
+    mygame.arcade.run()
 
 
 if __name__ == "__main__":
