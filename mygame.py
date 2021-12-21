@@ -296,7 +296,7 @@ class MyGame(arcade.Window):
 
                 if (enemy.center_x < 0 or enemy.center_x > const.SCREEN_WIDTH or
                         enemy.center_y < 0 or enemy.center_y > const.SCREEN_HEIGHT):
-                    enemy.recharge_time = 10  # enemy.recharge_time can't reach 0 if enemy isn't on screen
+                    enemy.recharge_time = 10  # enemy.recharge_time не достигнет 0, если enemy не на экране
                 if (enemy.center_x < - const.TOLERANCE or enemy.center_x > const.SCREEN_WIDTH + const.TOLERANCE or
                         enemy.center_y < - const.TOLERANCE or enemy.center_y > const.SCREEN_HEIGHT + const.TOLERANCE):
                     enemy.remove_from_sprite_lists()
@@ -357,8 +357,9 @@ class MyGame(arcade.Window):
                 if money.bottom <= const.GROUND/2 + 4:
                     money.change_x = 0
                     money.change_y = 0
-                if math.dist([mouse_x, mouse_y], [money.center_x, money.center_y]) <= 20:
-                    # собирание монет мышкой:
+                if (math.dist([mouse_x, mouse_y], [money.center_x, money.center_y]) <= 20 or
+                        arcade.check_for_collision(self.objects[0], money)):
+                    # собирание монет мышкой или падение монет прямо к доту:
                     arcade.play_sound(self.coin_sound, volume=0.3)
                     angle = math.atan2(self.icons[0].center_y - money.center_y, self.icons[0].center_x - money.center_x)
                     money.change_x = math.cos(angle) * 32
@@ -502,7 +503,7 @@ class MyGame(arcade.Window):
 
             self.bullet_list.append(bullet)
 
-            gun.recharge_time = 1/gun.rate
+            gun.recharge_time = 1 / gun.rate
 
     def horizontal_lateral_weapons_fire(self, weapon, double=True):
         """
@@ -513,13 +514,13 @@ class MyGame(arcade.Window):
         if weapon.recharge_time == 0:
             if double is True:
                 for direct in [-1, 1]:
-                        bullet = arcade.Sprite("pictures/4_bullet.png")
-                        bullet.center_x = weapon.center_x
-                        bullet.center_y = weapon.center_y
-                        bullet.change_x = 32 * direct
-                        bullet.hp = 1
-                        bullet.damage = 2
-                        self.bullet_list.append(bullet)
+                    bullet = arcade.Sprite("pictures/4_bullet.png")
+                    bullet.center_x = weapon.center_x
+                    bullet.center_y = weapon.center_y
+                    bullet.change_x = 32 * direct
+                    bullet.hp = 1
+                    bullet.damage = 2
+                    self.bullet_list.append(bullet)
             weapon.recharge_time = 1/weapon.rate
         else:
             weapon.recharge_time -= 1
@@ -635,7 +636,8 @@ class MyGame(arcade.Window):
         self.air_enemies[-1].gun.change_y = self.air_enemies[-1].change_y
         self.air_enemies[-1].type = 2
 
-    def next_frame(self, object, frames=2):
+    @staticmethod
+    def next_frame(object, frames=2):
         """
         Анимирует объект путем регулярной замены его текстуры.
         Берёт информацию о текущем кадре из имени файла
