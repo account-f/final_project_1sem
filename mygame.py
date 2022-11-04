@@ -4,6 +4,7 @@ import random
 import math
 import os
 import constants as const
+import enemies
 
 
 class QuitButton(arcade.gui.UIFlatButton):
@@ -55,6 +56,7 @@ class MyGame(arcade.Window):
         self.text = ""
         self.text_time = -1  # таймер для корректного отображения текста
         self.health_hint_marker = False
+        self.helicopter_helicopter_indicator = False
 
         self.icons = None  # иконки
         self.moneys = None  # "монетки", а по сути запчасти, служащие внутриигровой валютой
@@ -71,9 +73,10 @@ class MyGame(arcade.Window):
         self.guns = None  # пушки врагов
         self.booms = None  # список действующих анимаций взрывов
         self.spawn_list = []  # список, по ходу игры содержащий наименование врага, размер и время спавна
+        self.trash = None  # список объектов, подлежащих удалению
 
         # инициализация звуков
-        self.main_sound = arcade.load_sound("sounds/background.m4a", False)
+        self.main_sound = arcade.load_sound("sounds/Scott Buckley Pigstep.mp3", False)
         self.helicopter_crash = arcade.load_sound("sounds/helicopter_crash.mp3", False)
         self.end_of_game = arcade.load_sound("sounds/game_over.wav", False)
         self.laser_sound = arcade.load_sound("sounds/laser.mp3", False)
@@ -83,6 +86,7 @@ class MyGame(arcade.Window):
         self.cannon_sound = arcade.load_sound("sounds/cannon_fire.mp3", False)
         self.coin_sound = arcade.load_sound("sounds/coin_pickup.wav", False)
         self.coin_score = arcade.load_sound("sounds/coin_score.wav", False)
+        self.helicopter_helicopter = arcade.load_sound("sounds/helicopter, helicopter.mp3", False)
 
         # инициализация фона и установка его координат:
         self.background = arcade.Sprite("pictures/desert.png")  # фоновый рисунок
@@ -116,7 +120,7 @@ class MyGame(arcade.Window):
     def setup(self):
         """ Настройка игры и инициализация переменных """
         # фоновая музыка:
-        arcade.play_sound(self.main_sound, volume=0.1, looping=True)
+        arcade.play_sound(self.main_sound, volume=0.4, looping=True)
 
         # инициализация различных списков:
         self.icons = arcade.SpriteList()
@@ -133,6 +137,7 @@ class MyGame(arcade.Window):
         self.player_guns = arcade.SpriteList()
         self.guns = arcade.SpriteList()
         self.booms = arcade.SpriteList()
+        self.trash = arcade.SpriteList()
 
         # инициализация главного холма (с записью его расположения на экране и помещением в список objects):
         pillbox = arcade.Sprite("pictures/pillbox.png")
@@ -244,12 +249,13 @@ class MyGame(arcade.Window):
                         bullet.hp -= 1
                     else:
                         bullet.remove_from_sprite_lists()
+                        self.trash.append(bullet)
 
-                if (bullet.bottom < const.GROUND/2 or bullet.top > const.SCREEN_HEIGHT
-                        or bullet.right < 0 or bullet.left > const.SCREEN_WIDTH
+                if ((bullet.center_x - self.objects[0].center_x) ** 2 +(bullet.center_y - self.objects[0].center_y) ** 2 >= 2000 ** 2
                         or bullet.hp <= 0):
                     # удаление пули при ее покидании экрана и/или отсутствии HP:
                     bullet.remove_from_sprite_lists()
+                    self.trash.append(bullet)
                 bullet.change_y -= const.G_for_bullets
 
             for enemy in self.ground_enemies:
@@ -260,6 +266,7 @@ class MyGame(arcade.Window):
                         self.screen_text("DON'T FORGET COLLECT DETAILS!")
                     # удаление танкетки при отсутствии у нее HP:
                     enemy.remove_from_sprite_lists()
+                    self.trash.append(enemy)
                     self.score += enemy.size  # начисление очков в зависимости от размера врага
                 else:
                     distance = abs(enemy.center_x - const.SCREEN_WIDTH / 2)
@@ -279,6 +286,8 @@ class MyGame(arcade.Window):
                     self.generate_money(enemy)
                     enemy.remove_from_sprite_lists()
                     enemy.gun.remove_from_sprite_lists()
+                    self.trash.append(enemy)
+                    self.trash.append(enemy.gun)
                     self.score += enemy.size  # начисление очков в зависимости от размера врага
                 else:
                     if enemy.time % 2 == 0:
@@ -300,14 +309,17 @@ class MyGame(arcade.Window):
                 if (enemy.center_x < - const.TOLERANCE or enemy.center_x > const.SCREEN_WIDTH + const.TOLERANCE or
                         enemy.center_y < - const.TOLERANCE or enemy.center_y > const.SCREEN_HEIGHT + const.TOLERANCE):
                     enemy.remove_from_sprite_lists()
+                    self.trash.append(enemy)
                     if hasattr("enemy", "gun") is True:
                         enemy.gun.remove_from_sprite_lists()
+                        self.trash.append(enemy.gun)
 
             for enemy in self.enemy_kamikaze:
                 if enemy.hp <= 0:
                     # удаление дрона с созданием на его месте взрыва:
                     self.create_boom(enemy.center_x, enemy.center_y, enemy.change_x, enemy.change_y)
                     enemy.remove_from_sprite_lists()
+                    self.trash.append(enemy)
                     self.score += enemy.size  # начисление очков в зависимости от размера врага
 
                     # включение звука взрыва:
@@ -320,6 +332,7 @@ class MyGame(arcade.Window):
 
                         self.create_boom(enemy.center_x, enemy.center_y, enemy.change_x, enemy.change_y)
                         enemy.remove_from_sprite_lists()
+                        self.trash.append(enemy)
                         arcade.play_sound(self.helicopter_crash, volume=0.3)
 
             for boom in self.booms:
@@ -333,6 +346,7 @@ class MyGame(arcade.Window):
                         boom.texture = arcade.load_texture(file)
                     else:
                         boom.remove_from_sprite_lists()
+                        self.trash.append(boom)
 
             for object in self.objects:
                 # обновление HP игрока и замена текстуры холма при его занулении:
@@ -341,6 +355,7 @@ class MyGame(arcade.Window):
                     object.hp -= bullet.size
 
                     bullet.remove_from_sprite_lists()
+                    self.trash.append(bullet)
 
                 if object.hp <= 0:
                     # замена картинки холма при достижении нулевого HP игроком:
@@ -357,8 +372,8 @@ class MyGame(arcade.Window):
                 if money.bottom <= const.GROUND/2 + 4:
                     money.change_x = 0
                     money.change_y = 0
-                if (math.dist([mouse_x, mouse_y], [money.center_x, money.center_y]) <= 20 or
-                        arcade.check_for_collision(self.objects[0], money)):
+                if ((math.dist([mouse_x, mouse_y], [money.center_x, money.center_y]) <= 20 or
+                        arcade.check_for_collision(self.objects[0], money)) and money.caught_up == False):
                     # собирание монет мышкой или падение монет прямо к доту:
                     arcade.play_sound(self.coin_sound, volume=0.3)
                     angle = math.atan2(self.icons[0].center_y - money.center_y, self.icons[0].center_x - money.center_x)
@@ -375,6 +390,7 @@ class MyGame(arcade.Window):
                         self.screen_text("PRESS H TO HEAL FOR 10 DETAILS")
                         self.health_hint_marker = True
                     money.remove_from_sprite_lists()
+                    self.trash.append(money)
 
             for gun in self.ground_lateral_weapons:
                 if len(self.ground_enemies) > 0:
@@ -385,10 +401,21 @@ class MyGame(arcade.Window):
 
             # движение пули:
             for enemy_bullet in self.enemy_bullet_list:
-                if (enemy_bullet.bottom < const.GROUND/2 or enemy_bullet.top > const.SCREEN_HEIGHT
-                        or enemy_bullet.right < 0 or enemy_bullet.left > const.SCREEN_WIDTH):
+                if (enemy_bullet.center_x - self.objects[0].center_x) ** 2 +(enemy_bullet.center_y - self.objects[0].center_y) ** 2 >= 2000 ** 2:
                     enemy_bullet.remove_from_sprite_lists()
+                    self.trash.append(enemy_bullet)
                 enemy_bullet.change_y -= const.G_for_bullets  # скорость пули меняется из-за гравитации
+
+            for elem in self.trash:
+                elem.remove_from_sprite_lists()
+                elem.kill()
+                del elem
+
+            if self.helicopter_helicopter_indicator == False and len(self.air_enemies) >= 4:
+                arcade.play_sound(self.helicopter_helicopter, volume=0.5)
+                self.score += 10
+                self.screen_text("HELICOPTER, HELICOPTER!")
+                self.helicopter_helicopter_indicator = True
 
             # обновление объектов игры:
             self.moneys.update()
@@ -436,6 +463,8 @@ class MyGame(arcade.Window):
             self.player_guns[0].rate = 10 / const.FPS
         if symbol == arcade.key.H:
             self.heal(10)
+        if symbol == arcade.key.I:
+            pass
 
     def fire(self, enemy):
         """
@@ -565,23 +594,7 @@ class MyGame(arcade.Window):
         self.enemies.append(tankette)
 
     def default_drone_spawn(self, size):
-        """
-        Создаёт дрон-камикадзе
-        :param size: размер
-        """
-        direct = random.choice([1, -1])
-        drone = arcade.Sprite("pictures/drone.png")
-        drone.size = size
-        drone.center_x = const.SCREEN_WIDTH/2 - direct * (const.SCREEN_WIDTH/2 + drone.width)
-        drone.top = random.randint(const.SCREEN_HEIGHT//2, const.SCREEN_HEIGHT)
-        angle = math.atan2(drone.center_y - self.objects[0].center_y, drone.center_x - self.objects[0].center_x)
-        drone.change_x = - const.DRONE_VELOCITY * math.cos(angle)
-        drone.change_y = - const.DRONE_VELOCITY * math.sin(angle)
-        drone.hp = 1
-
-        # добавление дрона к соответствующим спискам врагов:
-        self.enemy_kamikaze.append(drone)
-        self.enemies.append(drone)
+        drone = enemies.Drone("pictures/drone.png", self)
 
     def default_copter1_spawn(self, size):
         """
