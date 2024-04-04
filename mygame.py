@@ -76,7 +76,7 @@ class MyGame(arcade.Window):
         self.trash = None  # список объектов, подлежащих удалению
 
         # инициализация звуков
-        self.main_sound = arcade.load_sound("sounds/Scott Buckley Pigstep.mp3", False)
+        self.main_sound = arcade.load_sound("sounds/ThomasBergersenImmortal.mp3", False)
         self.helicopter_crash = arcade.load_sound("sounds/helicopter_crash.mp3", False)
         self.end_of_game = arcade.load_sound("sounds/game_over.wav", False)
         self.laser_sound = arcade.load_sound("sounds/laser.mp3", False)
