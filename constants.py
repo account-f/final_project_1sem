@@ -4,7 +4,7 @@ SCREEN_HEIGHT = 800
 SCREEN_TITLE = "Turret"
 mouse_x = 0
 mouse_y = 0
-GROUND = 80  # высота земли
+GROUND = 80  # высота земли и характерное расстояние от краёв экрана
 menu = True
 started = False
 
@@ -19,6 +19,7 @@ SPARKY_SPEED = 1
 SPARKY_HP = 50
 BULLET_PENETRA = 3  # HP пули главной пушки
 TOLERANCE = SCREEN_WIDTH / 10  # величина отклонения, использующаяся для корректной вражеской атаки
+AIRMINE_SPEED = 4
 
 ENEMIES = [0] * 21
 ENEMIES[20] = ["sparky"]
@@ -32,16 +33,20 @@ G_for_bullets = 0.1  # ускорение свободного падения д
 
 upgrade_list_1 = [0, 1, 2, 3]
 upgrade_list_2 = [0, 1]
-upgrade_list_3 = [0]
+upgrade_list_3 = [0, 1]
 
 # время:
 FPS = 60
-FPB = 4  # переменная, устанавливающая частоту смену кадров анимации взрыва
-SPAWN_INTERVAL = FPS * 10  # интервал времени, отводящийся на один цикл 'спавна'
+FPB = 6  # переменная, устанавливающая частоту смену кадров
+SPAWN_INTERVAL = FPS * 8  # интервал времени, отводящийся на один цикл 'спавна'
 CYCLE = FPS * 30
 TEXT_TIME = FPS * 3
+AIRSTRIKE_RELOAD = FPS * 20
+AIRSTRIKE_VELOCITY = 3.6 * SCREEN_HEIGHT / FPS
+AIRSTRIKE_ROCKET_BLAST_RADIUS = 100
+AIRMINE_SPAWN_INTERVAL = SPAWN_INTERVAL
 
-# текст сюжета:
+# текст сюжета [добавил кавычки-ёлочки]:
 lore_text = "The year is 2124. People presented the latest invention to the world: artificial intelligence «Servitus» " \
             "with access to all digital systems of the planet. He could help around the house, drive cars and public " \
             "transport, ensure the operation of urban infrastructures, control unmanned weapons, track and make " \
@@ -65,4 +70,4 @@ lore_text = "The year is 2124. People presented the latest invention to the worl
             "machines controlled by Servetus.\n\n\nYou are one of the survivors. In your hands is the protection of one " \
             "of the last strongholds of humanity. You must repel enemy attacks, repair equipment and integrate new " \
             "weapons into the defense system.\n\n\nWhile the frontier holds, a small hope still smolder... "
-lore_time = 50 * FPS
+lore_time = 60 * FPS

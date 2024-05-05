@@ -53,15 +53,20 @@ class MyGame(arcade.Window):
         self.enemy_points = 0  # текущее значение очков врага
         self.spawn_timer = 0  # таймер, по которому рассчитывается спавн врагов
         self.cash = 0  # счётчик валюты
-        self.text = "DEFEND THE COHORT OF LAST SURVIVORS!\n\nPRESS SPACE FOR PAUSE\n\nSERVITUS IS CLOSING..."
-        self.text_time = const.TEXT_TIME  # таймер для корректного отображения текста
+        self.text = "DEFEND THE COHORT OF LAST SURVIVORS!\n\nUSE MOUSE TO AIM AND FIRE\n\nSERVITUS IS CLOSING..."
+        self.text_time = const.TEXT_TIME * 2  # таймер для корректного отображения текста
         self.health_hint_marker = False
         self.helicopter_helicopter_indicator = False
         self.enable_gun_switching = False
+        self.enable_airstrike = False
+        self.airmines = False
+        self.airguns = False
+        self.airmine_timer = 0
 
         self.transparency = 0  # alpha of night desert and color filter
         self.cycle_number = 0  # number of cycle/2
         self.day_timer = 0   # нормированный на частоту смены дня и ночи счётчик времени
+        self.airstrike_timer = 0
 
         self.icons = None  # иконки
         self.moneys = None  # "монетки", а по сути запчасти, служащие внутриигровой валютой
@@ -84,6 +89,9 @@ class MyGame(arcade.Window):
         self.color_filters = None  # цветовой фильтр поверх всех спрайтов
         self.sleeves = None  # гильзы
         self.sparky_bullet_list = None  # sparky shots
+        self.rocket_list = None  # rockets
+        self.airmine_list = None
+        self.airgun_list = None
 
         # инициализация звуков
         self.main_sound = arcade.load_sound("sounds/ThomasBergersenImmortal.mp3", False)
@@ -97,13 +105,21 @@ class MyGame(arcade.Window):
         self.coin_sound = arcade.load_sound("sounds/coin_pickup.wav", False)
         self.coin_score = arcade.load_sound("sounds/coin_score.wav", False)
         self.helicopter_helicopter = arcade.load_sound("sounds/helicopter, helicopter.mp3", False)
+        self.sparky_spawn = arcade.load_sound("sounds/sparky_spawn.mp3", False)
+        self.sparky_shot = arcade.load_sound("sounds/sparky_shot.mp3", False)
+        self.sparky_hit = arcade.load_sound("sounds/sparky_hit.mp3", False)
+        self.turret_switch = arcade.load_sound("sounds/technical_sound.mp3", False)
+        self.thunder = arcade.load_sound("sounds/thunder.mp3", False)
+        self.airstrike_calling = arcade.load_sound("sounds/airborne2.mp3", False)
+        self.airstrike_inbound = arcade.load_sound("sounds/airstrike inbound.mp3", False)
+        self.blast = arcade.load_sound("sounds/blast.mp3", False)
 
         # инициализация фона и установка его координат:
         self.background = arcade.Sprite("pictures/desert.png")  # фоновый рисунок
         self.background.center_x = const.SCREEN_WIDTH/2
         self.background.center_y = const.SCREEN_HEIGHT/2
 
-        self.max_enemy_points = 5  # initial number of enemy points, using to spawn
+        self.max_enemy_points = 3  # initial number of enemy points, using to spawn
         self.mouse_pressed_test = False  # variable checks if key button IS pressed
 
         # настройка предыгрового меню:
@@ -156,6 +172,9 @@ class MyGame(arcade.Window):
         self.color_filters = arcade.SpriteList()
         self.sleeves = arcade.SpriteList()
         self.sparky_bullet_list = arcade.SpriteList()
+        self.rocket_list = arcade.SpriteList()
+        self.airmine_list = arcade.SpriteList()
+        self.airgun_list = arcade.SpriteList()
 
         # инициализация главного холма (с записью его расположения на экране и помещением в список objects):
         pillbox = arcade.Sprite("pictures/pillbox.png")
@@ -222,8 +241,8 @@ class MyGame(arcade.Window):
             # рисование текста сюжета до начала игры:
             for lore in self.lore:
                 arcade.draw_text(const.lore_text, lore.center_x, lore.center_y,
-                                 arcade.color.BLACK, 20, width=2 * const.SCREEN_WIDTH/3, align="center",
-                                 font_name="Kenney Future")
+                                 arcade.color.BLACK, 40, width=2 * const.SCREEN_WIDTH/3, align="center",
+                                 font_name="Kenney Pixel")
 
         elif gamemode == "started":
             self.manager.disable()
@@ -239,14 +258,17 @@ class MyGame(arcade.Window):
             self.icons.draw()
             self.moneys.draw()
             self.ground_lateral_weapons.draw()
-            self.bullet_list.draw()
+            self.airmine_list.draw()
+            self.airgun_list.draw()
             self.objects.draw()
+            self.bullet_list.draw()
             self.static_objects.draw()
             self.enemy_bullet_list.draw()
             self.sleeves.draw()
             self.player_guns.draw()
             self.enemies.draw()
             self.guns.draw()
+            self.rocket_list.draw()
             self.sparky_bullet_list.draw()
             self.booms.draw()
             self.color_filters.draw()
@@ -291,7 +313,9 @@ class MyGame(arcade.Window):
             self.lore.update()
             for lore in self.lore:
                 lore.time += 1
-                if lore.time == const.lore_time:
+                if lore.time == 1:
+                    arcade.play_sound(self.thunder)
+                elif lore.time == const.lore_time:
                     gamemode = "started"
                     self.trash.append(lore)
 
@@ -300,8 +324,13 @@ class MyGame(arcade.Window):
             # обновление счетчика кадров и таймера для текста:
             self.frame_count += 1
             self.text_time -= 1
+            if self.airstrike_timer > 0:
+                self.airstrike_timer -= 1
+            elif self.airstrike == 0:
+                self.screen_text("AIRSTRIKE IS READY!")
 
             self.spawn()
+            self.airmines_spawn()
 
             for gun in self.player_guns:
                 # обновление угла наклона пушки игрока
@@ -323,12 +352,33 @@ class MyGame(arcade.Window):
                         bullet.remove_from_sprite_lists()
                         self.trash.append(bullet)
 
-                if ((bullet.center_x - self.objects[0].center_x) ** 2 +(bullet.center_y - self.objects[0].center_y) ** 2 >= 2000 ** 2
+                if ((bullet.center_x - self.objects[0].center_x) ** 2 + (bullet.center_y - self.objects[0].center_y) ** 2 >= 2000 ** 2
                         or bullet.hp <= 0):
                     # удаление пули при ее покидании экрана и/или отсутствии HP:
                     bullet.remove_from_sprite_lists()
                     self.trash.append(bullet)
                 bullet.change_y -= const.G_for_bullets
+
+            for airmine in self.airmine_list:
+                hit_list = (arcade.check_for_collision_with_list(airmine, self.enemies))
+                for enemy in hit_list:
+                    enemy.hp -= airmine.damage
+                    self.create_boom(airmine.center_x, airmine.center_y, 0, 0, 3)
+                    circle = arcade.SpriteCircle(const.AIRSTRIKE_ROCKET_BLAST_RADIUS, arcade.color.WHITE)
+                    circle.center_x = airmine.center_x
+                    circle.center_y = airmine.center_y
+                    hit_list2 = (arcade.check_for_collision_with_list(circle, self.enemies))
+                    for elem in hit_list2:
+                        elem.hp -= airmine.damage
+                    arcade.play_sound(self.blast)
+                    airmine.remove_from_sprite_lists()
+                    self.trash.append(airmine)
+                    self.trash.append(circle)
+                if (airmine.center_x - airmine.x)**2 + (airmine.center_y - airmine.y)**2 <= (airmine.width + airmine.height)**2:
+                    airmine.change_y = 0
+                    airmine.change_x = 0
+                if airmine.time % const.FPB == 0:
+                    self.next_frame(airmine, frames=2)
 
             for enemy in self.ground_enemies:
                 enemy.time += 1
@@ -336,7 +386,7 @@ class MyGame(arcade.Window):
                     self.generate_money(enemy)
                     if len(self.moneys) >= 10:
                         self.screen_text("DON'T FORGET COLLECT DETAILS!")
-                    # удаление врага при отсутствии у нее HP:
+                    # удаление врага при отсутствии HP:
                     enemy.remove_from_sprite_lists()
                     self.trash.append(enemy)
                     self.score += enemy.size  # начисление очков в зависимости от размера врага
@@ -351,6 +401,14 @@ class MyGame(arcade.Window):
                         self.fire(enemy)
                         enemy.change_x = 0
 
+                    if enemy.size == 20:
+                        if enemy.time % const.FPB == 0 and enemy.recharge_time >= 0:
+                            self.next_frame(enemy, frames=3)
+
+                        if abs(enemy.change_x) > 0 > enemy.recharge_time:
+                            # friction to sparky after shot
+                            enemy.change_x += enemy.direct * const.SPARKY_SPEED
+
             for enemy in self.air_enemies:
                 enemy.gun.angle = math.degrees(math.atan2(enemy.center_y - self.objects[0].center_y,
                                                           enemy.center_x - self.objects[0].center_x)) + 90
@@ -363,7 +421,7 @@ class MyGame(arcade.Window):
                     self.trash.append(enemy.gun)
                     self.score += enemy.size  # начисление очков в зависимости от размера врага
                 else:
-                    if enemy.time % 2 == 0:
+                    if enemy.time % const.FPB == 0:
                         self.next_frame(enemy, frames=6)
                     if enemy.type == 2 and enemy.time >= const.FPS:
                         self.fire(enemy.gun)
@@ -432,8 +490,11 @@ class MyGame(arcade.Window):
 
                 hit_list = arcade.check_for_collision_with_list(object, self.sparky_bullet_list)
                 for bullet in hit_list:
-                    # HP removes in another part. Here comes the boom
-                    self.create_boom(bullet.center_x, bullet.center_y, 0, 0, 2)
+                    if not bullet.collision:
+                        # HP removes in another part. Here comes the boom
+                        self.create_boom(object.center_x, object.center_y, bullet.change_x/4, 0, 2)
+                        bullet.collision = True
+                        arcade.play_sound(self.sparky_hit, volume=0.5)
 
                 if object.hp <= 0:
                     # замена картинки холма при достижении нулевого HP игроком:
@@ -447,7 +508,7 @@ class MyGame(arcade.Window):
             for money in self.moneys:
                 if money.caught_up is False:
                     money.change_y -= const.G_for_money
-                if money.bottom <= const.GROUND/2 + 4:
+                if money.bottom <= const.GROUND/2 + 4 and money.caught_up is False:
                     money.change_x = 0
                     money.change_y = 0
                 if ((math.dist([mouse_x, mouse_y], [money.center_x, money.center_y]) <= 20 or
@@ -492,6 +553,35 @@ class MyGame(arcade.Window):
                         elem.remove_from_sprite_lists()
                         self.trash.append(elem)
 
+            # airstrike:
+            for rocket in self.rocket_list:
+                hit_list = arcade.check_for_collision_with_list(rocket, self.enemies)
+
+                for elem in hit_list:
+                    if not rocket.collision:
+                        # HP removes in another part. Here comes the boom
+                        self.create_boom(elem.center_x, elem.center_y, 0, 0, 3, g=0)
+                        rocket.collision = True
+                        elem.hp -= 20
+                        arcade.play_sound(self.blast)
+
+                if rocket.center_y - rocket.height/2 <= const.GROUND and not rocket.collision:
+                    self.create_boom(rocket.center_x, rocket.center_y - rocket.height/2, 0, 0, 3, g=0)
+                    rocket.collision = True
+                    arcade.play_sound(self.blast)
+
+                if rocket.collision is True:
+                    circle = arcade.SpriteCircle(const.AIRSTRIKE_ROCKET_BLAST_RADIUS, arcade.color.WHITE)
+                    circle.center_x = rocket.center_x
+                    circle.center_y = rocket.center_y
+                    hit_list = arcade.check_for_collision_with_list(circle, self.enemies)
+                    for enemy in hit_list:
+                        enemy.hp -= 10
+
+                    rocket.remove_from_sprite_lists()
+                    self.trash.append(rocket)
+                    self.trash.append(circle)
+
             for sleeve in self.sleeves:
                 sleeve.change_y -= const.G_for_sleeves
                 if sleeve.center_y < 0:
@@ -517,7 +607,7 @@ class MyGame(arcade.Window):
                 elem.kill()
                 del elem
 
-            if self.helicopter_helicopter_indicator == False and len(self.air_enemies) >= 4:
+            if self.helicopter_helicopter_indicator is False and len(self.air_enemies) >= 4:
                 arcade.play_sound(self.helicopter_helicopter, volume=0.5)
                 self.score += 10
                 self.screen_text("HELICOPTER, HELICOPTER!")
@@ -536,6 +626,9 @@ class MyGame(arcade.Window):
             self.air_enemies.update_animation(1)
             self.background.update()
             self.sparky_bullet_list.update()
+            self.rocket_list.update()
+            self.airmine_list.update()
+            self.airgun_list.update()
 
         elif not self.game_over and gamemode == "started" and self.pause:
             pass
@@ -565,10 +658,12 @@ class MyGame(arcade.Window):
                 for gun in self.player_guns:
                     gun.texture = arcade.load_texture("pictures/gun.png")
                     gun.fire_type = "laser"
-                    gun.damage = 4
+                    gun.damage = 3
                     gun.penetra = 3
                     gun.autofire = False
                     gun.rate = 2 / const.FPS  # скорострельность
+                    arcade.play_sound(self.turret_switch, volume=0.5)
+
             if symbol == arcade.key.KEY_2 and self.enable_gun_switching:
                 for gun in self.player_guns:
                     gun.texture = arcade.load_texture("pictures/machine_gun.png")
@@ -577,6 +672,8 @@ class MyGame(arcade.Window):
                     gun.penetra = 1
                     gun.autofire = True
                     gun.rate = 10 / const.FPS
+                    arcade.play_sound(self.turret_switch, volume=0.5)
+
             if symbol == arcade.key.KEY_0 and self.enable_gun_switching:
                 for gun in self.player_guns:
                     gun.texture = arcade.load_texture("pictures/initial_gun_upgraded.png")
@@ -585,6 +682,10 @@ class MyGame(arcade.Window):
                     gun.penetra = 1
                     gun.autofire = True
                     gun.rate = 2 / const.FPS
+                    arcade.play_sound(self.turret_switch, volume=0.5)
+
+            if symbol == arcade.key.A and self.enable_airstrike:
+                self.airstrike()
             if symbol == arcade.key.H:
                 self.heal(10)
             if symbol == arcade.key.SPACE:
@@ -608,7 +709,7 @@ class MyGame(arcade.Window):
         lore = arcade.Sprite(None)
         lore.time = 0
         lore.center_x = const.SCREEN_WIDTH/6
-        lore.center_y = 0
+        lore.center_y = - const.SCREEN_HEIGHT/6
         lore.change_y = 1
         self.lore.append(lore)
 
@@ -629,21 +730,25 @@ class MyGame(arcade.Window):
                 angle = math.atan2(enemy.center_y - self.objects[0].center_y,
                                    enemy.center_x - self.objects[0].center_x)
 
-                enemy.recharge_time = 5 * const.FPS
+                enemy.recharge_time = -1
                 bullet.size = 50
 
                 bullet.angle = math.degrees(angle)
                 bullet.change_x = - math.cos(angle) * const.BULLET_SPEED
                 bullet.change_y = - math.sin(angle) * const.BULLET_SPEED
 
+                bullet.collision = False
+
                 self.sparky_bullet_list.append(bullet)
+
+                enemy.change_x = - enemy.direct * const.SPARKY_SPEED * 4
+                arcade.play_sound(self.sparky_shot, volume=0.5)
+                enemy.texture = arcade.load_texture("pictures/sparky.png", flipped_horizontally=bool(abs(enemy.direct-1)/2))
 
             else:
                 bullet = arcade.Sprite("pictures/" + str(enemy.size) + "_bullet.png")
                 bullet.center_x = enemy.center_x
                 bullet.center_y = enemy.center_y
-
-                delta_angle = random.randint(-20, 20)  # разброс выстрела
 
                 angle = math.atan2(enemy.center_y - self.objects[0].center_y,
                                    enemy.center_x - self.objects[0].center_x)
@@ -746,7 +851,7 @@ class MyGame(arcade.Window):
         else:
             weapon.recharge_time -= 1
 
-    def create_boom(self, x, y, vx, vy, type):
+    def create_boom(self, x, y, vx, vy, type, g=1):
         """
         Создаёт взрыв и присваивает ему переменную, помогающую анимировать взрыв. Сохраняет часть скорости врага
         и меняет направление ближе к земле
@@ -755,12 +860,13 @@ class MyGame(arcade.Window):
         :param vx: проекция скорости врага на ось x
         :param vy:  проекция скорости врага на ось y
         :param type: тип взрыва, определяющий спрайт
+        :param g: constant for additional velocity imitating g-force
         """
         boom = arcade.Sprite("pictures/boom" + str(type) + "_1.png", scale=1.0)
         boom.center_x = x + vx
         boom.center_y = y + vy
         boom.change_x = vx / 2
-        boom.change_y = vy / 2 - 1
+        boom.change_y = vy / 2 - g
         boom.count = const.FPB
         boom.type = type
         self.booms.append(boom)
@@ -850,7 +956,7 @@ class MyGame(arcade.Window):
         :param recharge_time: initial recharge time
         """
         direct = random.choice([1, -1])
-        file = "pictures/sparky.png"
+        file = "pictures/20_sparky 0 .png"
         sparky = arcade.Sprite(file, flipped_horizontally=bool(abs(direct - 1) / 2))
         sparky.file = file
         sparky.size = size
@@ -864,6 +970,7 @@ class MyGame(arcade.Window):
         sparky.frame = 0
         self.ground_enemies.append(sparky)
         self.enemies.append(sparky)
+        arcade.play_sound(self.sparky_spawn, volume=0.5)
 
     @staticmethod
     def next_frame(object, frames=2):
@@ -1023,9 +1130,64 @@ class MyGame(arcade.Window):
                     arcade.play_sound(self.upgrade_sound, volume=0.5)
                     self.pause = True
                     if upgrade == 0:
-                        pass
-                        self.screen_text("MAXIMUM ADVANCES. KEEP FIGHT PERSISTENTLY"
-                                         "\n\nHOLD SERVITUS AS LONG AS POSSIBLE")
+                        self.enable_airstrike = True
+                        self.screen_text("THE OLD MISSILES WERE REMOTELY ACCESSED."
+                                         "\n\nPRESS A TO CALL AN AIRSTRIKE")
+                    elif upgrade == 1:
+                        self.airmines = True
+                        self.screen_text("TERROR OF COPTERS!"
+                                         "\n\nYOU GOT A FACTORY OF AUTOMATIC AIRMINES WORKING ON ELECTROMAGNETIC POWER")
+
+    def airstrike(self, rockets=4):
+        """
+        Function creates an airstrike
+        :param rockets: amount of missiles falling from the sky
+        """
+        if self.airstrike_timer == 0:
+            for i in range(rockets):
+                rocket = arcade.Sprite("pictures/rocket.png")
+                rocket.center_y = (const.AIRSTRIKE_VELOCITY * 10 / const.FPS + i / 2) * const.SCREEN_WIDTH
+                rocket.change_y = - const.AIRSTRIKE_VELOCITY
+                rocket.center_x = const.SCREEN_WIDTH * (i + 0.5) / rockets
+                rocket.collision = False
+                self.rocket_list.append(rocket)
+            self.airstrike_timer = const.AIRSTRIKE_RELOAD
+            arcade.play_sound(self.airstrike_calling, volume=0.8)
+            arcade.play_sound(self.airstrike_inbound, volume=0.2)
+
+    def airmines_spawn(self):
+        """
+        Spawns air mines
+        """
+        if self.airmine_timer < 0 and self.airmines:
+            airmine = arcade.Sprite("pictures/airmine 1 .png")
+            airmine.file = "pictures/airmine 1 .png"
+            airmine.time = 0
+            airmine.damage = 10
+            airmine.center_x = self.objects[0].center_x
+            airmine.center_y = self.objects[0].center_y
+            airmine.y = random.randint(2 * const.GROUND, const.SCREEN_HEIGHT - const.GROUND)
+            airmine.direct = random.choice([1, -1])
+            if airmine.direct == 1:
+                airmine.x = random.randint(2 * const.GROUND, self.objects[0].center_x - self.objects[0].width)
+            else:
+                airmine.x = random.randint(self.objects[0].center_x + self.objects[0].width, const.SCREEN_WIDTH - 2 * const.GROUND)
+
+            angle = math.atan2(airmine.y - self.objects[0].center_y,
+                               airmine.x - self.objects[0].center_x)
+            airmine.change_x = math.cos(angle) * const.AIRMINE_SPEED
+            airmine.change_y = math.sin(angle) * const.AIRMINE_SPEED
+            self.airmine_list.append(airmine)
+
+            self.airmine_timer = const.AIRMINE_SPAWN_INTERVAL
+        else:
+            self.airmine_timer -= 1
+
+    def airguns_spawn(self):
+        """
+        Spawns automatic airships with guns
+        """
+        airgun = arcade.Sprite("pictures/airgun.png")
 
     def screen_text(self, text):
         """
