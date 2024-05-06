@@ -20,6 +20,7 @@ SPARKY_HP = 50
 BULLET_PENETRA = 3  # HP пули главной пушки
 TOLERANCE = SCREEN_WIDTH / 10  # величина отклонения, использующаяся для корректной вражеской атаки
 AIRMINE_SPEED = 4
+AIRGUN_RADIUS = SCREEN_HEIGHT/4
 
 ENEMIES = [0] * 21
 ENEMIES[20] = ["sparky"]
@@ -33,7 +34,7 @@ G_for_bullets = 0.1  # ускорение свободного падения д
 
 upgrade_list_1 = [0, 1, 2, 3]
 upgrade_list_2 = [0, 1]
-upgrade_list_3 = [0, 1]
+upgrade_list_3 = [0, 1, 2]
 
 # время:
 FPS = 60

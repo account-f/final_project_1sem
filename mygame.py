@@ -80,6 +80,7 @@ class MyGame(arcade.Window):
         self.static_objects = None  # другие статичные объекты
         self.objects = None  # список для дота
         self.player_guns = None  # наводящиеся пушки игрока
+        self.player_autoguns = None  # automatized guns of player
         self.guns = None  # пушки врагов
         self.booms = None  # список действующих анимаций взрывов
         self.spawn_list = []  # список, по ходу игры содержащий наименование врага, размер и время спавна
@@ -113,6 +114,7 @@ class MyGame(arcade.Window):
         self.airstrike_calling = arcade.load_sound("sounds/airborne2.mp3", False)
         self.airstrike_inbound = arcade.load_sound("sounds/airstrike inbound.mp3", False)
         self.blast = arcade.load_sound("sounds/blast.mp3", False)
+        self.radar = arcade.load_sound("sounds/radar.mp3", False)
 
         # инициализация фона и установка его координат:
         self.background = arcade.Sprite("pictures/desert.png")  # фоновый рисунок
@@ -164,6 +166,7 @@ class MyGame(arcade.Window):
         self.ground_lateral_weapons = arcade.SpriteList()
         self.objects = arcade.SpriteList()
         self.player_guns = arcade.SpriteList()
+        self.player_autoguns = arcade.SpriteList()
         self.guns = arcade.SpriteList()
         self.booms = arcade.SpriteList()
         self.trash = arcade.SpriteList()
@@ -266,6 +269,7 @@ class MyGame(arcade.Window):
             self.enemy_bullet_list.draw()
             self.sleeves.draw()
             self.player_guns.draw()
+            self.player_autoguns.draw()
             self.enemies.draw()
             self.guns.draw()
             self.rocket_list.draw()
@@ -330,7 +334,12 @@ class MyGame(arcade.Window):
                 self.screen_text("AIRSTRIKE IS READY!")
 
             self.spawn()
-            self.airmines_spawn()
+
+            for gun in self.player_autoguns:
+                self.autoguns_fire(gun)
+
+            if self.airmines:
+                self.airmines_spawn()
 
             for gun in self.player_guns:
                 # обновление угла наклона пушки игрока
@@ -360,6 +369,10 @@ class MyGame(arcade.Window):
                 bullet.change_y -= const.G_for_bullets
 
             for airmine in self.airmine_list:
+                airmine.time += 1
+                if airmine.time % const.FPB == 0:
+                    self.next_frame(airmine, frames=2)
+
                 hit_list = (arcade.check_for_collision_with_list(airmine, self.enemies))
                 for enemy in hit_list:
                     enemy.hp -= airmine.damage
@@ -377,14 +390,17 @@ class MyGame(arcade.Window):
                 if (airmine.center_x - airmine.x)**2 + (airmine.center_y - airmine.y)**2 <= (airmine.width + airmine.height)**2:
                     airmine.change_y = 0
                     airmine.change_x = 0
-                if airmine.time % const.FPB == 0:
-                    self.next_frame(airmine, frames=2)
+
+            for airgun in self.airgun_list:
+                airgun.time += 1
+                if airgun.time % const.FPB == 0:
+                    self.next_frame(airgun, frames=2)
 
             for enemy in self.ground_enemies:
                 enemy.time += 1
                 if enemy.hp <= 0:
                     self.generate_money(enemy)
-                    if len(self.moneys) >= 10:
+                    if len(self.moneys) >= 10 and self.frame_count <= const.FPS * 90:
                         self.screen_text("DON'T FORGET COLLECT DETAILS!")
                     # удаление врага при отсутствии HP:
                     enemy.remove_from_sprite_lists()
@@ -629,6 +645,8 @@ class MyGame(arcade.Window):
             self.rocket_list.update()
             self.airmine_list.update()
             self.airgun_list.update()
+            self.player_guns.update()  # code works without this one
+            self.player_autoguns.update()
 
         elif not self.game_over and gamemode == "started" and self.pause:
             pass
@@ -1136,7 +1154,14 @@ class MyGame(arcade.Window):
                     elif upgrade == 1:
                         self.airmines = True
                         self.screen_text("TERROR OF COPTERS!"
-                                         "\n\nYOU GOT A FACTORY OF AUTOMATIC AIRMINES WORKING ON ELECTROMAGNETIC POWER")
+                                         "\n\nYOU GOT A FACTORY OF AUTOMATIC AIRMINES WORKING ON ELECTROMAGNETIC POWER"
+                                         "\n\nOPERATING SYSTEM IS BASED ON RUINS OF GLOBAL IOT")
+                    elif upgrade == 2:
+                        self.airguns = True
+                        self.airguns_spawn()
+                        self.screen_text("MORE AUTOMATION!"
+                                         "\n\nADVANCED BATTLE CHIPS WITH COMPUTER VISION"
+                                         "\nPROVIDES COMPREHENSIVE PROTECTION")
 
     def airstrike(self, rockets=4):
         """
@@ -1160,8 +1185,9 @@ class MyGame(arcade.Window):
         Spawns air mines
         """
         if self.airmine_timer < 0 and self.airmines:
-            airmine = arcade.Sprite("pictures/airmine 1 .png")
-            airmine.file = "pictures/airmine 1 .png"
+            file = "pictures/airmine 1 .png"
+            airmine = arcade.Sprite(file)
+            airmine.file = file
             airmine.time = 0
             airmine.damage = 10
             airmine.center_x = self.objects[0].center_x
@@ -1187,7 +1213,69 @@ class MyGame(arcade.Window):
         """
         Spawns automatic airships with guns
         """
-        airgun = arcade.Sprite("pictures/airgun.png")
+        for i in range(2):
+            file = "pictures/airgun 0 .png"
+            airgun = arcade.Sprite(file)
+            airgun.file = file
+            airgun.center_x = self.objects[0].center_x + (const.SCREEN_WIDTH + const.GROUND) * (-1)**i / 4
+            airgun.center_y = 1.4 * self.objects[0].height  # sets height based on pillbox height
+            self.airgun_list.append(airgun)
+            airgun.gun = arcade.Sprite("pictures/initial_gun.png")
+            airgun.gun.center_x = airgun.center_x
+            airgun.gun.center_y = airgun.center_y + airgun.height/2
+            airgun.gun.damage = 1
+            airgun.gun.penetra = 1
+            airgun.gun.fire_type = "ball"
+            airgun.gun.rate = 1 / const.FPS  # скорострельность: создаёт 1 пулю за характерное время FPS
+            airgun.gun.recharge_time = const.FPS
+
+            airgun.time = 0
+            airgun.direct = 1
+            self.player_autoguns.append(airgun.gun)
+            arcade.play_sound(self.radar, volume=0.3)
+
+    def autoguns_fire(self, gun):
+        """
+        Makes automatic player guns aim and fire
+        :param gun: the exact gun
+        """
+        circle = arcade.SpriteCircle(300, arcade.color.WHITE)
+        circle.center_x = gun.center_x
+        circle.center_y = gun.center_y
+        radius = (arcade.check_for_collision_with_list(circle, self.enemies))
+        target = arcade.get_closest_sprite(gun, radius)
+
+        if target is not None:
+            angle = math.atan2(target[0].center_y - gun.center_y, target[0].center_x - gun.center_x)
+            gun.angle = math.degrees(angle) - 90
+        if gun.recharge_time <= 0 and not self.pause and target is not None:
+            if gun.fire_type == "ball":
+                bullet = arcade.Sprite("pictures/2_bullet.png")
+                bullet.change_x = math.cos(angle) * const.BULLET_SPEED
+                bullet.change_y = math.sin(angle) * const.BULLET_SPEED
+                arcade.play_sound(self.cannon_sound, volume=0.15)
+                sleeve = arcade.Sprite("pictures/sleeve" + str(random.randint(1, 2)) + ".png")
+                sleeve.change_x = math.sin(angle) * 4
+                sleeve.change_y = abs(math.cos(angle)) * 4
+                sleeve.change_angle = 30
+
+            # setting up other bullet's parameters:
+            bullet.hp = gun.penetra
+            bullet.damage = gun.damage
+            bullet.angle = math.degrees(angle)
+            bullet.center_x = gun.center_x + math.cos(angle) * bullet.width/4
+            bullet.center_y = gun.center_y + math.sin(angle) * bullet.width/4
+            self.bullet_list.append(bullet)
+
+            # setting up sleeve's parameters:
+            if sleeve is not None:
+                sleeve.center_x = gun.center_x
+                sleeve.center_y = gun.center_y
+                self.sleeves.append(sleeve)
+
+            gun.recharge_time = 1 / gun.rate
+        elif gun.recharge_time != 0:
+            gun.recharge_time -= 1
 
     def screen_text(self, text):
         """
