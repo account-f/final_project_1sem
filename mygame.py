@@ -68,6 +68,7 @@ class MyGame(arcade.Window):
         self.day_timer = 0   # нормированный на частоту смены дня и ночи счётчик времени
         self.airstrike_timer = 0
 
+        self.clouds = None
         self.icons = None  # иконки
         self.moneys = None  # "монетки", а по сути запчасти, служащие внутриигровой валютой
         self.enemies = None  # все враги
@@ -84,6 +85,7 @@ class MyGame(arcade.Window):
         self.guns = None  # пушки врагов
         self.booms = None  # список действующих анимаций взрывов
         self.spawn_list = []  # список, по ходу игры содержащий наименование врага, размер и время спавна
+        self.clouds_spawn_list = []  # list of clouds to spawn
         self.trash = None  # список объектов, подлежащих удалению
         self.lore = None  # якорь для текста сюжета
         self.backgrounds = None  # фон, чтобы сменялся
@@ -154,6 +156,7 @@ class MyGame(arcade.Window):
         arcade.play_sound(self.main_sound, volume=0.5, looping=True)
 
         # инициализация различных списков:
+        self.clouds = arcade.SpriteList()
         self.icons = arcade.SpriteList()
         self.moneys = arcade.SpriteList()
         self.enemies = arcade.SpriteList()
@@ -258,6 +261,7 @@ class MyGame(arcade.Window):
             arcade.draw_rectangle_filled(const.SCREEN_WIDTH/2, const.GROUND/4, const.SCREEN_WIDTH, const.GROUND/2, (226, 198, 131))
 
             # рисование различных объектов:
+            self.clouds.draw()
             self.icons.draw()
             self.moneys.draw()
             self.ground_lateral_weapons.draw()
@@ -334,6 +338,7 @@ class MyGame(arcade.Window):
                 self.screen_text("AIRSTRIKE IS READY!")
 
             self.spawn()
+            self.clouds_spawn()
 
             for gun in self.player_autoguns:
                 self.autoguns_fire(gun)
@@ -617,6 +622,12 @@ class MyGame(arcade.Window):
                 for filter in self.color_filters:
                     filter.alpha = self.transparency
 
+            # clouds
+            for cloud in self.clouds:
+                if abs(const.SCREEN_WIDTH/2 - cloud.center_x) > cloud.width + const.SCREEN_WIDTH/2:
+                    cloud.remove_from_sprite_lists()
+                    self.trash.append(cloud)
+
             # deleting of garbage
             for elem in self.trash:
                 elem.remove_from_sprite_lists()
@@ -630,6 +641,7 @@ class MyGame(arcade.Window):
                 self.helicopter_helicopter_indicator = True
 
             # обновление объектов игры:
+            self.clouds.update()
             self.moneys.update()
             self.enemies.update()
             self.bullet_list.update()
@@ -925,7 +937,7 @@ class MyGame(arcade.Window):
         copter = arcade.Sprite(file)
         copter.type = 1
         copter.center_x = const.SCREEN_WIDTH/2 - direct * (const.SCREEN_WIDTH/2 + copter.width)
-        copter.top = random.randint(const.SCREEN_HEIGHT//2, const.SCREEN_HEIGHT)
+        copter.top = random.randint(const.SCREEN_HEIGHT//2, const.SCREEN_HEIGHT - copter.height * 2)
         copter.direct = direct
         copter.file = file
         copter.size = size
@@ -1045,6 +1057,27 @@ class MyGame(arcade.Window):
             for enemy_str in self.spawn_list:
                 if self.spawn_timer == enemy_str[2]:
                     eval("self.default_" + str(enemy_str[0]) + "_spawn(" + str(enemy_str[1]) + ")")
+
+    def clouds_spawn(self):
+        """
+        Generates clouds from 0 to 6 every spawn_interval
+        """
+        if self.frame_count % const.SPAWN_INTERVAL == 0:
+            self.clouds_spawn_list = []
+            for _ in range(random.randint(0, 6)):
+                self.clouds_spawn_list.append(random.randint(self.frame_count + 1,
+                                                             self.frame_count + const.SPAWN_INTERVAL - 1))
+        else:
+            for elem in self.clouds_spawn_list:
+                if elem == self.frame_count:
+                    cloud = arcade.Sprite("pictures/cloud" + str(random.randint(1, 3)) + ".png",
+                                          flipped_horizontally=random.choice([True, False]))
+                    cloud.alpha = random.randint(10, 255)
+                    cloud.direct = random.choice([1, -1])
+                    cloud.center_x = cloud.direct * (const.SCREEN_WIDTH + cloud.width/2)
+                    cloud.top = const.SCREEN_HEIGHT - random.randint(0, const.GROUND * 2)
+                    cloud.change_x = - cloud.direct * random.randint(1, const.CLOUD_MAX_SPEED)
+                    self.clouds.append(cloud)
 
     def generate_money(self, enemy):
         """
