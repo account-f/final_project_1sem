@@ -58,15 +58,16 @@ class MyGame(arcade.Window):
         self.health_hint_marker = False
         self.helicopter_helicopter_indicator = False
         self.enable_gun_switching = False
-        self.enable_airstrike = False
+        self.airstrike_rockets = 0
         self.airmines = False
         self.airguns = False
         self.airmine_timer = 0
+        self.coin_magnet = False
 
         self.transparency = 0  # alpha of night desert and color filter
         self.cycle_number = 0  # number of cycle/2
         self.day_timer = 0   # нормированный на частоту смены дня и ночи счётчик времени
-        self.airstrike_timer = 0
+        self.airstrike_timer = -1
 
         self.clouds = None
         self.icons = None  # иконки
@@ -334,7 +335,7 @@ class MyGame(arcade.Window):
             self.text_time -= 1
             if self.airstrike_timer > 0:
                 self.airstrike_timer -= 1
-            elif self.airstrike == 0:
+            elif self.airstrike_timer == 0 and self.airstrike_rockets > 0:
                 self.screen_text("AIRSTRIKE IS READY!")
 
             self.spawn()
@@ -365,7 +366,6 @@ class MyGame(arcade.Window):
                     else:
                         bullet.remove_from_sprite_lists()
                         self.trash.append(bullet)
-
                 if ((bullet.center_x - self.objects[0].center_x) ** 2 + (bullet.center_y - self.objects[0].center_y) ** 2 >= 2000 ** 2
                         or bullet.hp <= 0):
                     # удаление пули при ее покидании экрана и/или отсутствии HP:
@@ -530,8 +530,12 @@ class MyGame(arcade.Window):
                 if money.caught_up is False:
                     money.change_y -= const.G_for_money
                 if money.bottom <= const.GROUND/2 + 4 and money.caught_up is False:
-                    money.change_x = 0
                     money.change_y = 0
+                    if not self.coin_magnet:
+                        money.change_x = 0
+                    else:
+                        money.change_x = (self.objects[0].center_x - money.center_x)/abs(self.objects[0].center_x - money.center_x)
+
                 if ((math.dist([mouse_x, mouse_y], [money.center_x, money.center_y]) <= 20 or
                         arcade.check_for_collision(self.objects[0], money)) and money.caught_up == False):
                     # собирание монет мышкой или падение монет прямо к доту:
@@ -714,8 +718,8 @@ class MyGame(arcade.Window):
                     gun.rate = 2 / const.FPS
                     arcade.play_sound(self.turret_switch, volume=0.5)
 
-            if symbol == arcade.key.A and self.enable_airstrike:
-                self.airstrike()
+            if symbol == arcade.key.A and self.airstrike_rockets > 0:
+                self.airstrike(self.airstrike_rockets)
             if symbol == arcade.key.H:
                 self.heal(10)
             if symbol == arcade.key.SPACE:
@@ -825,7 +829,7 @@ class MyGame(arcade.Window):
                 sleeve = arcade.Sprite("pictures/sleeve" + str(random.randint(1, 2)) + ".png")
                 sleeve.change_x = math.sin(angle) * 4
                 sleeve.change_y = abs(math.cos(angle)) * 4
-                sleeve.change_angle = 30
+                sleeve.change_angle = 35
             elif gun.fire_type == "ball":
                 bullet = arcade.Sprite("pictures/2_bullet.png")
                 bullet.change_x = math.cos(angle) * const.BULLET_SPEED
@@ -834,7 +838,7 @@ class MyGame(arcade.Window):
                 sleeve = arcade.Sprite("pictures/sleeve" + str(random.randint(1, 2)) + ".png")
                 sleeve.change_x = math.sin(angle) * 4
                 sleeve.change_y = abs(math.cos(angle)) * 4
-                sleeve.change_angle = 30
+                sleeve.change_angle = 20
             elif gun.fire_type == "ball2":
                 bullet = arcade.Sprite("pictures/4_bullet.png")
                 bullet.change_x = math.cos(angle) * const.BULLET_SPEED
@@ -871,7 +875,7 @@ class MyGame(arcade.Window):
             if double is True:
                 for direct in [-1, 1]:
                     bullet = arcade.Sprite("pictures/4_bullet.png")
-                    bullet.center_x = weapon.center_x
+                    bullet.center_x = weapon.center_x + direct * weapon.width/2
                     bullet.center_y = weapon.center_y
                     bullet.change_x = 32 * direct
                     bullet.hp = 1
@@ -1181,7 +1185,7 @@ class MyGame(arcade.Window):
                     arcade.play_sound(self.upgrade_sound, volume=0.5)
                     self.pause = True
                     if upgrade == 0:
-                        self.enable_airstrike = True
+                        self.airstrike_rockets = 4
                         self.screen_text("THE OLD MISSILES WERE REMOTELY ACCESSED."
                                          "\n\nPRESS A TO CALL AN AIRSTRIKE")
                     elif upgrade == 1:
@@ -1192,19 +1196,51 @@ class MyGame(arcade.Window):
                     elif upgrade == 2:
                         self.airguns = True
                         self.airguns_spawn()
-                        self.screen_text("MORE AUTOMATION!"
+                        self.screen_text("AUTOMATIC GUIDANCE WEAPONS!"
                                          "\n\nADVANCED BATTLE CHIPS WITH COMPUTER VISION"
                                          "\nPROVIDES COMPREHENSIVE PROTECTION")
+                else:
+                    if len(const.upgrade_list_4) > 0:
+                        upgrade = random.choice(const.upgrade_list_4)
+                        const.upgrade_list_4.remove(upgrade)
+                        arcade.play_sound(self.upgrade_sound, volume=0.5)
+                        self.pause = True
+                        if upgrade == 0:
+                            self.objects[0].max_hp += 20
+                            self.objects[0].hp += 20
+                            self.objects[0].texture = arcade.load_texture("pictures/pillbox_modernized.png")
+                            self.static_objects[0].texture = arcade.load_texture("pictures/shield_modernized_2.png")
+                            self.ground_lateral_weapons[0].texture = arcade.load_texture("pictures/lateral_weapons_modernized.png")
+                            self.screen_text("AUGMENTED PILLBOX!"
+                                             "\n\nMAXIMUM HP")
+                        elif upgrade == 1:
+                            for gun in self.player_autoguns:
+                                gun.texture = arcade.load_texture("pictures/minigun.png")
+                                gun.fire_type = "high_velocity_mini_bullet"
+                                gun.rate = 8 / const.FPS
+                            self.screen_text("FLOATING SENTRIES UPGRADED!"
+                                             "\n\nMINIGUNS HAVE INSTALLED"
+                                             "\n\nHIGH VELOCITY BULLETS INCREASE ACCURACY")
 
-    def airstrike(self, rockets=4):
+                        elif upgrade == 2:
+                            self.airstrike_rockets = 8
+                            self.screen_text("ACCESS TO HELLISH BOMBARDMENT!"
+                                             "\n\nAIRSTRIKE NPW CONTAINS 8 ROCKETS")
+
+                        elif upgrade == 3:
+                            self.coin_magnet = True
+                            self.screen_text("MAGNET ENABLED!"
+                                             "\n\nNOW DETAILS ATTRACT TO THE PILLBOX BY MAGNETIC FORCE")
+
+    def airstrike(self, rockets):
         """
         Function creates an airstrike
         :param rockets: amount of missiles falling from the sky
         """
-        if self.airstrike_timer == 0:
+        if self.airstrike_timer <= 0:
             for i in range(rockets):
                 rocket = arcade.Sprite("pictures/rocket.png")
-                rocket.center_y = (const.AIRSTRIKE_VELOCITY * 10 / const.FPS + i / 2) * const.SCREEN_WIDTH
+                rocket.center_y = (const.AIRSTRIKE_VELOCITY * 10 / const.FPS + 2 * i / rockets) * const.SCREEN_WIDTH
                 rocket.change_y = - const.AIRSTRIKE_VELOCITY
                 rocket.center_x = const.SCREEN_WIDTH * (i + 0.5) / rockets
                 rocket.collision = False
@@ -1284,15 +1320,20 @@ class MyGame(arcade.Window):
         if gun.recharge_time <= 0 and not self.pause and target is not None:
             if gun.fire_type == "ball":
                 bullet = arcade.Sprite("pictures/2_bullet.png")
+                arcade.play_sound(self.cannon_sound, volume=0.15)
                 bullet.change_x = math.cos(angle) * const.BULLET_SPEED
                 bullet.change_y = math.sin(angle) * const.BULLET_SPEED
-                arcade.play_sound(self.cannon_sound, volume=0.15)
-                sleeve = arcade.Sprite("pictures/sleeve" + str(random.randint(1, 2)) + ".png")
-                sleeve.change_x = math.sin(angle) * 4
-                sleeve.change_y = abs(math.cos(angle)) * 4
-                sleeve.change_angle = 30
 
-            # setting up other bullet's parameters:
+            elif gun.fire_type == "high_velocity_mini_bullet":
+                bullet = arcade.Sprite("pictures/high_velocity_mini_bullet.png")
+                arcade.play_sound(self.minigun_sound, volume=0.15)
+                bullet.change_x = math.cos(angle) * 72
+                bullet.change_y = math.sin(angle) * 72
+
+            sleeve = arcade.Sprite("pictures/sleeve" + str(random.randint(1, 2)) + ".png")
+            sleeve.change_x = math.sin(angle) * 4
+            sleeve.change_y = abs(math.cos(angle)) * 4
+            sleeve.change_angle = 25
             bullet.hp = gun.penetra
             bullet.damage = gun.damage
             bullet.angle = math.degrees(angle)
