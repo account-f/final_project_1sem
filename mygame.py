@@ -1,11 +1,14 @@
-import arcade
-import arcade.gui
-import random
 import math
 import os
+import random
+
+import arcade
+import arcade.gui
+import numpy
 
 import constants as const
 import enemies
+import resources
 
 
 class QuitButton(arcade.gui.UIFlatButton):
@@ -48,76 +51,7 @@ class MyGame(arcade.Window):
         self.game_over = False
         arcade.set_background_color(arcade.color.ARSENIC)
 
-        self.frame_count = -1  # счётчик обновлений экрана
-        self.score = 0  # счёт
-        self.enemy_points = 0  # текущее значение очков врага
-        self.spawn_timer = 0  # таймер, по которому рассчитывается спавн врагов
-        self.cash = 0  # счётчик валюты
-        self.text = "DEFEND THE COHORT OF LAST SURVIVORS!\n\nUSE MOUSE TO AIM AND FIRE\n\nSERVITUS IS CLOSING..."
-        self.text_time = const.TEXT_TIME * 2  # таймер для корректного отображения текста
-        self.health_hint_marker = False
-        self.helicopter_helicopter_indicator = False
-        self.enable_gun_switching = False
-        self.airstrike_rockets = 0
-        self.airmines = False
-        self.airguns = False
-        self.airmine_timer = 0
-        self.coin_magnet = False
-
-        self.transparency = 0  # alpha of night desert and color filter
-        self.cycle_number = 0  # number of cycle/2
-        self.day_timer = 0   # нормированный на частоту смены дня и ночи счётчик времени
-        self.airstrike_timer = -1
-
-        self.clouds = None
-        self.icons = None  # иконки
-        self.moneys = None  # "монетки", а по сути запчасти, служащие внутриигровой валютой
-        self.enemies = None  # все враги
-        self.ground_enemies = None  # наземные враги
-        self.air_enemies = None  # воздушные враги
-        self.enemy_kamikaze = None  # враги-камикадзе: взрываются по достижении цели
-        self.bullet_list = None  # список пуль
-        self.enemy_bullet_list = None  # список вражеских снарядов
-        self.ground_lateral_weapons = None  # второстепенные наземные пушки
-        self.static_objects = None  # другие статичные объекты
-        self.objects = None  # список для дота
-        self.player_guns = None  # наводящиеся пушки игрока
-        self.player_autoguns = None  # automatized guns of player
-        self.guns = None  # пушки врагов
-        self.booms = None  # список действующих анимаций взрывов
-        self.spawn_list = []  # список, по ходу игры содержащий наименование врага, размер и время спавна
-        self.clouds_spawn_list = []  # list of clouds to spawn
-        self.trash = None  # список объектов, подлежащих удалению
-        self.lore = None  # якорь для текста сюжета
-        self.backgrounds = None  # фон, чтобы сменялся
-        self.color_filters = None  # цветовой фильтр поверх всех спрайтов
-        self.sleeves = None  # гильзы
-        self.sparky_bullet_list = None  # sparky shots
-        self.rocket_list = None  # rockets
-        self.airmine_list = None
-        self.airgun_list = None
-
-        # инициализация звуков
-        self.main_sound = arcade.load_sound("sounds/ThomasBergersenImmortal.mp3", False)
-        self.helicopter_crash = arcade.load_sound("sounds/helicopter_crash.mp3", False)
-        self.end_of_game = arcade.load_sound("sounds/game_over.wav", False)
-        self.laser_sound = arcade.load_sound("sounds/laser.mp3", False)
-        self.minigun_sound = arcade.load_sound("sounds/minigun_fire.mp3", False)
-        self.heal_sound = arcade.load_sound("sounds/heal.mp3", False)
-        self.upgrade_sound = arcade.load_sound("sounds/upgrade.mp3", False)
-        self.cannon_sound = arcade.load_sound("sounds/cannon_fire.mp3", False)
-        self.coin_sound = arcade.load_sound("sounds/coin_pickup.wav", False)
-        self.coin_score = arcade.load_sound("sounds/coin_score.wav", False)
-        self.helicopter_helicopter = arcade.load_sound("sounds/helicopter, helicopter.mp3", False)
-        self.sparky_spawn = arcade.load_sound("sounds/sparky_spawn.mp3", False)
-        self.sparky_shot = arcade.load_sound("sounds/sparky_shot.mp3", False)
-        self.sparky_hit = arcade.load_sound("sounds/sparky_hit.mp3", False)
-        self.turret_switch = arcade.load_sound("sounds/technical_sound.mp3", False)
-        self.thunder = arcade.load_sound("sounds/thunder.mp3", False)
-        self.airstrike_calling = arcade.load_sound("sounds/airborne2.mp3", False)
-        self.airstrike_inbound = arcade.load_sound("sounds/airstrike inbound.mp3", False)
-        self.blast = arcade.load_sound("sounds/blast.mp3", False)
-        self.radar = arcade.load_sound("sounds/radar.mp3", False)
+        resources.define_all(self)
 
         # инициализация фона и установка его координат:
         self.background = arcade.Sprite("pictures/desert.png")  # фоновый рисунок
@@ -155,33 +89,6 @@ class MyGame(arcade.Window):
         """ Настройка игры и инициализация переменных """
         # фоновая музыка:
         arcade.play_sound(self.main_sound, volume=0.5, looping=True)
-
-        # инициализация различных списков:
-        self.clouds = arcade.SpriteList()
-        self.icons = arcade.SpriteList()
-        self.moneys = arcade.SpriteList()
-        self.enemies = arcade.SpriteList()
-        self.static_objects = arcade.SpriteList()
-        self.ground_enemies = arcade.SpriteList()
-        self.air_enemies = arcade.SpriteList()
-        self.enemy_kamikaze = arcade.SpriteList()
-        self.bullet_list = arcade.SpriteList()
-        self.enemy_bullet_list = arcade.SpriteList()
-        self.ground_lateral_weapons = arcade.SpriteList()
-        self.objects = arcade.SpriteList()
-        self.player_guns = arcade.SpriteList()
-        self.player_autoguns = arcade.SpriteList()
-        self.guns = arcade.SpriteList()
-        self.booms = arcade.SpriteList()
-        self.trash = arcade.SpriteList()
-        self.lore = arcade.SpriteList()
-        self.backgrounds = arcade.SpriteList()
-        self.color_filters = arcade.SpriteList()
-        self.sleeves = arcade.SpriteList()
-        self.sparky_bullet_list = arcade.SpriteList()
-        self.rocket_list = arcade.SpriteList()
-        self.airmine_list = arcade.SpriteList()
-        self.airgun_list = arcade.SpriteList()
 
         # инициализация главного холма (с записью его расположения на экране и помещением в список objects):
         pillbox = arcade.Sprite("pictures/pillbox.png")
@@ -280,30 +187,31 @@ class MyGame(arcade.Window):
             self.rocket_list.draw()
             self.sparky_bullet_list.draw()
             self.booms.draw()
+            self.sparkle_list.draw()
             self.color_filters.draw()
 
             # рисование HP (health points) у наземных врагов и objects:
             for enemy in self.enemies:
                 if enemy.hp > 0:
                     arcade.draw_text(str(enemy.hp), enemy.center_x - enemy.width/2, enemy.top + 6,
-                                     arcade.color.LAVA, 16, width=enemy.width, align="center",
+                                     arcade.color.LAVA, 16, width=int(enemy.width), align="center",
                                      font_name="Kenney Future")
 
             for object in self.objects:
                 arcade.draw_text(str(object.hp), object.center_x - object.width/2, object.top + 80,
-                                 arcade.color.MEDIUM_PERSIAN_BLUE, 25, width=object.width, align="center",
+                                 arcade.color.MEDIUM_PERSIAN_BLUE, 25, width=int(object.width), align="center",
                                  font_name="Kenney Future")
 
             # рисование текста со счётом и монетами:
             arcade.draw_text("SCORE: " + str(self.score), const.SCREEN_WIDTH/2 + 100, const.SCREEN_HEIGHT - 40,
                              arcade.color.MEDIUM_PERSIAN_BLUE, 25, font_name="Kenney Future")
 
-            if self.cash < 10:
-                arcade.draw_text(str(self.cash), const.SCREEN_WIDTH/2 - 100, const.SCREEN_HEIGHT - 40,
-                                 arcade.color.MEDIUM_PERSIAN_BLUE, 25, font_name="Kenney Future")
-            else:
+            if self.cash >= 10 and self.objects[0].max_hp - self.objects[0].hp:
                 arcade.draw_text(str(self.cash), const.SCREEN_WIDTH/2 - 100, const.SCREEN_HEIGHT - 40,
                                  arcade.color.DARK_PASTEL_GREEN, 25, font_name="Kenney Future")
+            else:
+                arcade.draw_text(str(self.cash), const.SCREEN_WIDTH/2 - 100, const.SCREEN_HEIGHT - 40,
+                                 arcade.color.MEDIUM_PERSIAN_BLUE, 25, font_name="Kenney Future")
 
             if self.text_time >= 0:
                 arcade.draw_text(self.text, 0, 3 * const.SCREEN_HEIGHT / 4,
@@ -359,10 +267,38 @@ class MyGame(arcade.Window):
                 # генерация списка врагов, столкнувшихся с пулей
                 hit_list = (arcade.check_for_collision_with_list(bullet, self.enemies))
                 for enemy in hit_list:
+                    reflect = False
+                    if bullet.fire_type in ["ball", "ball2", "high_velocity_bullet"] and const.chromium_upgrade == 1:
+                        reflect = numpy.random.choice([True, False], p=[0.05, 0.95])
                     # обновление HP у врагов и пули; ее удаление в случае отсутствия HP:
                     if bullet.hp > 0:
-                        enemy.hp -= bullet.damage
-                        bullet.hp -= 1
+                        if reflect:
+                            for i in range(random.randint(2, 6)):
+                                sparkle = arcade.Sprite("pictures/" + str(random.choice(["small_", ""])) + "sparkle" + str(random.randint(1, 2)) + ".png")
+                                sparkle.center_x = enemy.center_x
+                                sparkle.center_y = enemy.center_y
+
+                                angle = math.atan2(bullet.change_y, bullet.change_x)
+                                delta_angle = random.randint(-10, 10)  # разброс
+                                angle += delta_angle * math.pi / 180
+                                velocity = math.sqrt(bullet.change_x**2 + bullet.change_y**2) / 10
+
+                                sparkle.change_x = velocity * math.sin(angle)
+                                sparkle.change_y = velocity * math.cos(angle)
+                                sparkle.angle = math.degrees(angle)
+                                sparkle.time = 0
+
+                                self.sparkle_list.append(sparkle)
+
+                            direct_change = random.choice([-1, 1])
+                            bullet.change_x = direct_change * bullet.change_x
+                            bullet.change_y = - direct_change * bullet.change_y
+                            bullet.angle = math.degrees(math.atan2(bullet.change_y, bullet.change_x))
+
+                            arcade.play_sound(self.ricochet[random.choice([0, 1])], volume = 0.6)
+                        else:
+                            enemy.hp -= bullet.damage
+                            bullet.hp -= 1
                     else:
                         bullet.remove_from_sprite_lists()
                         self.trash.append(bullet)
@@ -414,21 +350,23 @@ class MyGame(arcade.Window):
                 else:
                     distance = abs(enemy.center_x - const.SCREEN_WIDTH / 2)
 
-                    # остановка танкетки на определенном расстоянии от холма (в зависимости от размера):
+                    # остановка на определенном расстоянии от холма (в зависимости от размера):
                     if ((enemy.size == 1 and distance < const.SCREEN_WIDTH/6) or
                             (enemy.size == 2 and distance < const.SCREEN_WIDTH/5) or
                             (enemy.size == 4 and distance < const.SCREEN_WIDTH/4) or
-                            (enemy.size == 20 and distance < const.SCREEN_WIDTH/4)):
-                        self.fire(enemy)
+                            (enemy.size == 20 and distance < const.SCREEN_WIDTH/4 and enemy.recharge_time >= 0)):
                         enemy.change_x = 0
+                        self.fire(enemy)
 
-                    if enemy.size == 20:
-                        if enemy.time % const.FPB == 0 and enemy.recharge_time >= 0:
+                    if enemy.sort == "sparky":
+                        if enemy.time % int(const.FPB*1.5) == 0 and enemy.recharge_time >= 0:
                             self.next_frame(enemy, frames=3)
-
                         if abs(enemy.change_x) > 0 > enemy.recharge_time:
                             # friction to sparky after shot
-                            enemy.change_x += enemy.direct * const.SPARKY_SPEED
+                            enemy.change_x += enemy.direct/2
+                    elif enemy.sort == "tankette":
+                        if enemy.time % (const.FPB*2) == 0 and enemy.change_x != 0:
+                            self.next_frame(enemy, frames=2)
 
             for enemy in self.air_enemies:
                 enemy.gun.angle = math.degrees(math.atan2(enemy.center_y - self.objects[0].center_y,
@@ -442,7 +380,7 @@ class MyGame(arcade.Window):
                     self.trash.append(enemy.gun)
                     self.score += enemy.size  # начисление очков в зависимости от размера врага
                 else:
-                    if enemy.time % const.FPB == 0:
+                    if enemy.time % (const.FPB/2) == 0:
                         self.next_frame(enemy, frames=6)
                     if enemy.type == 2 and enemy.time >= const.FPS:
                         self.fire(enemy.gun)
@@ -499,6 +437,13 @@ class MyGame(arcade.Window):
                     else:
                         boom.remove_from_sprite_lists()
                         self.trash.append(boom)
+
+            for sparkle in self.sparkle_list:
+                if sparkle.time >= const.FPS/3:
+                    sparkle.remove_from_sprite_lists()
+                    self.trash.append(sparkle)
+                else:
+                    sparkle.time += 1
 
             for object in self.objects:
                 # обновление HP игрока и замена текстуры холма при его занулении:
@@ -663,6 +608,7 @@ class MyGame(arcade.Window):
             self.airgun_list.update()
             self.player_guns.update()  # code works without this one
             self.player_autoguns.update()
+            self.sparkle_list.update()
 
         elif not self.game_over and gamemode == "started" and self.pause:
             pass
@@ -755,7 +701,7 @@ class MyGame(arcade.Window):
         """
         if enemy.recharge_time == 0:  # проверка счетчика времени перезарядки
             # specially for sparky
-            if enemy.size == 20:
+            if enemy.sort == "sparky":
                 # unique bullet with direction
                 bullet = arcade.Sprite("pictures/" + str(enemy.size) + "_bullet.png", flipped_horizontally=bool(abs(enemy.direct-1)/2))
                 bullet.center_x = enemy.center_x
@@ -775,11 +721,11 @@ class MyGame(arcade.Window):
 
                 self.sparky_bullet_list.append(bullet)
 
-                enemy.change_x = - enemy.direct * const.SPARKY_SPEED * 4
+                enemy.change_x = - enemy.direct * const.SPARKY_SPEED * 10
                 arcade.play_sound(self.sparky_shot, volume=0.5)
                 enemy.texture = arcade.load_texture("pictures/sparky.png", flipped_horizontally=bool(abs(enemy.direct-1)/2))
 
-            else:
+            elif enemy.sort == "tankette" or "gun":
                 bullet = arcade.Sprite("pictures/" + str(enemy.size) + "_bullet.png")
                 bullet.center_x = enemy.center_x
                 bullet.center_y = enemy.center_y
@@ -790,7 +736,7 @@ class MyGame(arcade.Window):
                 delta_angle = random.randint(-20, 20)  # разброс выстрела
                 angle += delta_angle * math.pi / 180
 
-                bullet.size = enemy.size
+                bullet.size = enemy.size * (2 ** const.chromium_upgrade)
 
                 if enemy.size == 1:
                     enemy.recharge_time = 30
@@ -827,8 +773,8 @@ class MyGame(arcade.Window):
                 bullet.change_y = math.sin(angle) * 128
                 arcade.play_sound(self.minigun_sound, volume=0.15)
                 sleeve = arcade.Sprite("pictures/sleeve" + str(random.randint(1, 2)) + ".png")
-                sleeve.change_x = math.sin(angle) * 4
-                sleeve.change_y = abs(math.cos(angle)) * 4
+                sleeve.change_x = - math.cos(angle) * 4
+                sleeve.change_y = - math.sin(angle) * 4
                 sleeve.change_angle = 35
             elif gun.fire_type == "ball":
                 bullet = arcade.Sprite("pictures/2_bullet.png")
@@ -836,8 +782,8 @@ class MyGame(arcade.Window):
                 bullet.change_y = math.sin(angle) * const.BULLET_SPEED
                 arcade.play_sound(self.cannon_sound, volume=0.15)
                 sleeve = arcade.Sprite("pictures/sleeve" + str(random.randint(1, 2)) + ".png")
-                sleeve.change_x = math.sin(angle) * 4
-                sleeve.change_y = abs(math.cos(angle)) * 4
+                sleeve.change_x = - math.cos(angle) * 4
+                sleeve.change_y = - math.sin(angle) * 4
                 sleeve.change_angle = 20
             elif gun.fire_type == "ball2":
                 bullet = arcade.Sprite("pictures/4_bullet.png")
@@ -845,11 +791,12 @@ class MyGame(arcade.Window):
                 bullet.change_y = math.sin(angle) * const.BULLET_SPEED
                 arcade.play_sound(self.cannon_sound, volume=0.15)
                 sleeve = arcade.Sprite("pictures/sleeve.png")
-                sleeve.change_x = math.sin(angle) * 4
-                sleeve.change_y = abs(math.cos(angle)) * 4
+                sleeve.change_x = - math.cos(angle) * 4
+                sleeve.change_y = - math.sin(angle) * 4
                 sleeve.change_angle = 10
 
                 # setting up other bullet's parameters:
+            bullet.fire_type = gun.fire_type
             bullet.hp = gun.penetra
             bullet.damage = gun.damage
             bullet.angle = math.degrees(angle)
@@ -870,6 +817,7 @@ class MyGame(arcade.Window):
         Заставляет горизонтальные боковые орудия вести огонь
         :param weapon: стреляющее орудие
         :param double: определяет, может ли оружие стрелять в обе стороны
+        :param damage: damage
         """
         if weapon.recharge_time == 0:
             if double is True:
@@ -879,7 +827,8 @@ class MyGame(arcade.Window):
                     bullet.center_y = weapon.center_y
                     bullet.change_x = 32 * direct
                     bullet.hp = 1
-                    bullet.damage = 2
+                    bullet.damage = 2 * self.lateral_weapons_damage_modifier
+                    bullet.fire_type = "ball2"
                     self.bullet_list.append(bullet)
             weapon.recharge_time = 1/weapon.rate
         else:
@@ -912,8 +861,9 @@ class MyGame(arcade.Window):
         :param recharge_time: initial recharge time
         """
         direct = random.choice([1, -1])
-        file = "pictures/" + str(size) + "_tankette 0 .png"
+        file = "pictures/" + str(size) + const.chromium_upgrade * "chromium" + "_tankette 0 .png"
         tankette = arcade.Sprite(file, flipped_horizontally=bool(abs(direct-1)/2))
+        tankette.sort = "tankette"
         tankette.file = file
         tankette.size = size
         tankette.direct = direct
@@ -921,14 +871,15 @@ class MyGame(arcade.Window):
         tankette.change_x = direct * const.TANKETTE_VELOCITIES[size - 1]
         tankette.center_x = const.SCREEN_WIDTH/2 - direct * (const.SCREEN_WIDTH/2 + tankette.width)
         tankette.bottom = const.GROUND/2
-        tankette.hp = const.TANKETTE_HPS[size - 1]  # установление HP танкетки согласно ее размеру
+        tankette.hp = const.TANKETTE_HPS[size - 1] * (2 ** const.chromium_upgrade)  # установление HP согласно размеру
         tankette.recharge_time = recharge_time
         tankette.frame = 0
         self.ground_enemies.append(tankette)
         self.enemies.append(tankette)
 
     def default_drone_spawn(self, size):
-        drone = enemies.Drone("pictures/drone.png", self)
+        file = "pictures/" + const.chromium_upgrade * "chromium" + "drone.png"
+        drone = enemies.Drone(file, self)
 
     def default_copter1_spawn(self, size):
         """
@@ -937,15 +888,16 @@ class MyGame(arcade.Window):
         helicopter, helicopter
         """
         direct = random.choice([1, -1])
-        file = "pictures/" + str(size) + "_copter 0 .png"
+        file = "pictures/" + str(size) + const.chromium_upgrade * "chromium" + "_copter 0 .png"
         copter = arcade.Sprite(file)
         copter.type = 1
+        copter.sort = "copter"
         copter.center_x = const.SCREEN_WIDTH/2 - direct * (const.SCREEN_WIDTH/2 + copter.width)
         copter.top = random.randint(const.SCREEN_HEIGHT//2, const.SCREEN_HEIGHT - copter.height * 2)
         copter.direct = direct
         copter.file = file
         copter.size = size
-        copter.hp = const.COPTER_HPS[size - 1]
+        copter.hp = const.COPTER_HPS[size - 1] * (2 ** const.chromium_upgrade)
         copter.time = 0  # начальное время существования
 
         angle = math.atan2(self.objects[0].center_y - copter.center_y,
@@ -954,7 +906,10 @@ class MyGame(arcade.Window):
         copter.change_x = const.COPTER_VELOCITY * math.cos(angle)
         copter.change_y = const.COPTER_VELOCITY * math.sin(angle)
 
-        copter.gun = arcade.Sprite("pictures/gun1.png")
+        file = "pictures/" + const.chromium_upgrade * "chromium" + "gun1.png"
+        copter.gun = arcade.Sprite(file)
+        copter.gun.sort = "gun"
+        copter.gun.file = file
         copter.gun.size = 1
         copter.gun.angle = math.degrees(angle) - 90
         copter.gun.center_x = copter.center_x
@@ -983,7 +938,7 @@ class MyGame(arcade.Window):
         self.air_enemies[-1].gun.change_y = self.air_enemies[-1].change_y
         self.air_enemies[-1].type = 2
 
-    def default_sparky_spawn(self, size, recharge_time=0):
+    def default_sparky_spawn(self, size=20, recharge_time=0):
         """
         Создаёт SPARKY
         :param size: size using for creating bullets
@@ -993,6 +948,7 @@ class MyGame(arcade.Window):
         file = "pictures/20_sparky 0 .png"
         sparky = arcade.Sprite(file, flipped_horizontally=bool(abs(direct - 1) / 2))
         sparky.file = file
+        sparky.sort = "sparky"
         sparky.size = size
         sparky.direct = direct
         sparky.time = 0  # начальное время существования
@@ -1006,8 +962,7 @@ class MyGame(arcade.Window):
         self.enemies.append(sparky)
         arcade.play_sound(self.sparky_spawn, volume=0.5)
 
-    @staticmethod
-    def next_frame(object, frames=2):
+    def next_frame(self, object, frames=2):
         """
         Анимирует объект путем регулярной замены его текстуры.
         Берёт информацию о текущем кадре из имени файла
@@ -1019,7 +974,7 @@ class MyGame(arcade.Window):
         if number + 1 == frames:
             number = -1
         object.file = object.file.split(" ")[0] + " " + str((number + 1) % frames) + " " + object.file.split(" ")[2]
-        object.texture = arcade.load_texture(object.file, flipped_horizontally=bool(abs(object.direct-1)/2))
+        object.texture = self.textures[object.file][int(abs(object.direct-1)/2)]
 
     def spawn(self):
         """
@@ -1037,7 +992,7 @@ class MyGame(arcade.Window):
             self.enemy_points -= numbers[1]
             numbers[4] = random.randint(0, self.enemy_points // (4*2))
             self.enemy_points -= numbers[4] * 4
-            if self.enemy_points > 20:
+            if self.enemy_points > 20 and const.chromium_upgrade == 1:
                 numbers[20] = random.randint(0, 1)
                 self.enemy_points -= numbers[20] * 20
             numbers[2] = self.enemy_points // 2
@@ -1074,8 +1029,8 @@ class MyGame(arcade.Window):
         else:
             for elem in self.clouds_spawn_list:
                 if elem == self.frame_count:
-                    cloud = arcade.Sprite("pictures/cloud" + str(random.randint(1, 3)) + ".png",
-                                          flipped_horizontally=random.choice([True, False]))
+                    file = "pictures/" + const.chromium_upgrade * "chromium" + "cloud" + str(random.randint(1, 3)) + ".png"
+                    cloud = arcade.Sprite(file, flipped_horizontally=random.choice([True, False]))
                     cloud.alpha = random.randint(10, 255)
                     cloud.direct = random.choice([1, -1])
                     cloud.center_x = cloud.direct * (const.SCREEN_WIDTH + cloud.width/2)
@@ -1200,37 +1155,52 @@ class MyGame(arcade.Window):
                                          "\n\nADVANCED BATTLE CHIPS WITH COMPUTER VISION"
                                          "\nPROVIDES COMPREHENSIVE PROTECTION")
                 else:
-                    if len(const.upgrade_list_4) > 0:
-                        upgrade = random.choice(const.upgrade_list_4)
-                        const.upgrade_list_4.remove(upgrade)
-                        arcade.play_sound(self.upgrade_sound, volume=0.5)
+                    if const.chromium_upgrade == 0:
+                        const.chromium_upgrade = 1
+                        arcade.play_sound(self.thunder)
+                        self.screen_text("THE SERVITUS HAS EVOLVED..."
+                                         "\n\nCHROME-PLATED ARMOR TWICE AS STRONG"
+                                         "\n...AND HAS A 5% CHANCE TO REFLECT BULLETS"
+                                         "\n\nALSO MEET S.P.A.R.K.Y.")
                         self.pause = True
-                        if upgrade == 0:
-                            self.objects[0].max_hp += 20
-                            self.objects[0].hp += 20
-                            self.objects[0].texture = arcade.load_texture("pictures/pillbox_modernized.png")
-                            self.static_objects[0].texture = arcade.load_texture("pictures/shield_modernized_2.png")
-                            self.ground_lateral_weapons[0].texture = arcade.load_texture("pictures/lateral_weapons_modernized.png")
-                            self.screen_text("AUGMENTED PILLBOX!"
-                                             "\n\nMAXIMUM HP")
-                        elif upgrade == 1:
-                            for gun in self.player_autoguns:
-                                gun.texture = arcade.load_texture("pictures/minigun.png")
-                                gun.fire_type = "high_velocity_mini_bullet"
-                                gun.rate = 8 / const.FPS
-                            self.screen_text("FLOATING SENTRIES UPGRADED!"
-                                             "\n\nMINIGUNS HAVE INSTALLED"
-                                             "\n\nHIGH VELOCITY BULLETS INCREASE ACCURACY")
-
-                        elif upgrade == 2:
-                            self.airstrike_rockets = 8
-                            self.screen_text("ACCESS TO HELLISH BOMBARDMENT!"
-                                             "\n\nAIRSTRIKE NPW CONTAINS 8 ROCKETS")
-
-                        elif upgrade == 3:
-                            self.coin_magnet = True
-                            self.screen_text("MAGNET ENABLED!"
-                                             "\n\nNOW DETAILS ATTRACT TO THE PILLBOX BY MAGNETIC FORCE")
+                    else:
+                        if len(const.upgrade_list_4) > 0:
+                            upgrade = random.choice(const.upgrade_list_4)
+                            const.upgrade_list_4.remove(upgrade)
+                            arcade.play_sound(self.upgrade_sound, volume=0.5)
+                            self.pause = True
+                            if upgrade == 0:
+                                self.objects[0].max_hp += 20
+                                self.objects[0].hp += 20
+                                self.objects[0].texture = arcade.load_texture("pictures/pillbox_modernized.png")
+                                self.static_objects[0].texture = arcade.load_texture("pictures/shield_modernized_2.png")
+                                self.ground_lateral_weapons[0].texture = arcade.load_texture("pictures/lateral_weapons_modernized.png")
+                                self.lateral_weapons_damage_modifier = 2
+                                self.screen_text("AUGMENTED PILLBOX!"
+                                                 "\n\nMAXIMUM HP. GROUND WEAPONS DAMAGE HAS BEEN DOUBLED")
+                            elif upgrade == 1:
+                                for gun in self.player_autoguns:
+                                    gun.texture = arcade.load_texture("pictures/minigun.png")
+                                    gun.fire_type = "high_velocity_mini_bullet"
+                                    gun.rate = 8 / const.FPS
+                                self.screen_text("FLOATING SENTRIES UPGRADED!"
+                                                 "\n\nMINIGUNS HAVE INSTALLED"
+                                                 "\n\nHIGH VELOCITY BULLETS INCREASE ACCURACY")
+                            elif upgrade == 2:
+                                self.airstrike_rockets = 8
+                                self.screen_text("ACCESS TO HELLISH BOMBARDMENT!"
+                                                 "\n\nAIRSTRIKE NOW CONTAINS 8 ROCKETS")
+                            elif upgrade == 3:
+                                self.coin_magnet = True
+                                self.screen_text("MAGNET ENABLED!"
+                                                 "\n\nNOW DETAILS ATTRACT TO THE PILLBOX BY MAGNETIC FORCE")
+                        else:
+                            if const.final_words == 0:
+                                const.final_words = 1
+                                self.screen_text("MAXIMUM ADVANCES. KEEP FIGHT PERSISTENTLY"
+                                                 "\n\nHOLD SERVITUS AS LONG AS POSSIBLE")
+                                arcade.play_sound(self.thunder)
+                                self.pause = True
 
     def airstrike(self, rockets):
         """
@@ -1261,7 +1231,7 @@ class MyGame(arcade.Window):
             airmine.damage = 10
             airmine.center_x = self.objects[0].center_x
             airmine.center_y = self.objects[0].center_y
-            airmine.y = random.randint(2 * const.GROUND, const.SCREEN_HEIGHT - const.GROUND)
+            airmine.y = random.randint(3 * const.GROUND, const.SCREEN_HEIGHT - const.GROUND)
             airmine.direct = random.choice([1, -1])
             if airmine.direct == 1:
                 airmine.x = random.randint(2 * const.GROUND, self.objects[0].center_x - self.objects[0].width)
@@ -1330,9 +1300,10 @@ class MyGame(arcade.Window):
                 bullet.change_x = math.cos(angle) * 72
                 bullet.change_y = math.sin(angle) * 72
 
+            bullet.fire_type = gun.fire_type
             sleeve = arcade.Sprite("pictures/sleeve" + str(random.randint(1, 2)) + ".png")
-            sleeve.change_x = math.sin(angle) * 4
-            sleeve.change_y = abs(math.cos(angle)) * 4
+            sleeve.change_x = - math.cos(angle) * 4
+            sleeve.change_y = - math.sin(angle) * 4
             sleeve.change_angle = 25
             bullet.hp = gun.penetra
             bullet.damage = gun.damage

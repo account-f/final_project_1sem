@@ -12,14 +12,16 @@ def drone(game, size):
     :param size: размер
     """
     direct = random.choice([1, -1])
-    drone = arcade.Sprite("pictures/drone.png")
+    file = "pictures/" + const.chromium_upgrade * "chromium" + "drone.png"
+    drone = arcade.Sprite(file)
+    drone.sort = "drone"
     drone.size = size
     drone.center_x = const.SCREEN_WIDTH/2 - direct * (const.SCREEN_WIDTH/2 + drone.width)
     drone.top = random.randint(const.SCREEN_HEIGHT//2, const.SCREEN_HEIGHT)
     angle = math.atan2(drone.center_y - game.objects[0].center_y, drone.center_x - game.objects[0].center_x)
     drone.change_x = - const.DRONE_VELOCITY * math.cos(angle)
     drone.change_y = - const.DRONE_VELOCITY * math.sin(angle)
-    drone.hp = 1
+    drone.hp = 2 ** const.chromium_upgrade
 
     # добавление дрона к соответствующим спискам врагов:
     game.enemy_kamikaze.append(drone)

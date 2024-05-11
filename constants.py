@@ -35,7 +35,9 @@ G_for_bullets = 0.1  # ускорение свободного падения д
 upgrade_list_1 = [0, 1, 2, 3]
 upgrade_list_2 = [0, 1]
 upgrade_list_3 = [0, 1, 2]
+chromium_upgrade = 0
 upgrade_list_4 = [0, 1, 2, 3]
+final_words = 0
 
 CLOUD_MAX_SPEED = 3
 
