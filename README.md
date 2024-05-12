@@ -12,7 +12,7 @@ Tankettes, copters and other vehicles drop details, which can be used to heal by
 Player's and enemy's abilities are constantly growing.
 To quit the game, press X button on the window, or quit button in the menu.
 
-###Good luck, Player.
+### Good luck, Player.
 * Main background music by Thomas Bergersen;
 * Sounds from old flashgames: Strike force heroes, Robotic emergence;
 * Desert background by pukahuna;
