@@ -208,7 +208,7 @@ class MyGame(arcade.Window):
             arcade.draw_text("SCORE: " + str(self.score), const.SCREEN_WIDTH/2 + 100, const.SCREEN_HEIGHT - 40,
                              arcade.color.MEDIUM_PERSIAN_BLUE, 25, font_name="Kenney Future")
 
-            if self.cash >= 10 and self.objects[0].max_hp - self.objects[0].hp:
+            if self.cash >= 10 and self.objects[0].max_hp - self.objects[0].hp >= 10:
                 arcade.draw_text(str(self.cash), const.SCREEN_WIDTH/2 - 100, const.SCREEN_HEIGHT - 40,
                                  arcade.color.DARK_PASTEL_GREEN, 25, font_name="Kenney Future")
             else:
@@ -279,6 +279,11 @@ class MyGame(arcade.Window):
                     # обновление HP у врагов и пули; ее удаление в случае отсутствия HP:
                     if bullet.hp > 0:
                         if reflect:
+                            direct_change = random.choice([-1, 1])
+                            bullet.change_x = direct_change * bullet.change_x
+                            bullet.change_y = - direct_change * bullet.change_y
+                            bullet.angle = math.degrees(math.atan2(bullet.change_y, bullet.change_x))
+
                             for i in range(random.randint(2, 6)):
                                 sparkle = arcade.Sprite("pictures/" + str(random.choice(["small_", ""])) + "sparkle" + str(random.randint(1, 2)) + ".png")
                                 sparkle.center_x = enemy.center_x
@@ -296,12 +301,7 @@ class MyGame(arcade.Window):
 
                                 self.sparkle_list.append(sparkle)
 
-                            direct_change = random.choice([-1, 1])
-                            bullet.change_x = direct_change * bullet.change_x
-                            bullet.change_y = - direct_change * bullet.change_y
-                            bullet.angle = math.degrees(math.atan2(bullet.change_y, bullet.change_x))
-
-                            arcade.play_sound(self.ricochet[random.choice([0, 1])], volume = 0.6)
+                            arcade.play_sound(self.ricochet[random.choice([0, 1])], volume=0.6)
                         else:
                             enemy.hp -= bullet.damage
                             bullet.hp -= 1
@@ -445,7 +445,7 @@ class MyGame(arcade.Window):
                         self.trash.append(boom)
 
             for sparkle in self.sparkle_list:
-                if sparkle.time >= const.FPS/3:
+                if sparkle.time >= const.FPS/4:
                     sparkle.remove_from_sprite_lists()
                     self.trash.append(sparkle)
                 else:
@@ -477,6 +477,7 @@ class MyGame(arcade.Window):
                                      "\n\nSERVITUS HAS BECOME\nTHE ONLY FORM OF LIFE ON THE EARTH.")
                     self.game_over = True
                     print("Your score: ", self.score)
+                    print("You have my respect, Player.")
 
             # поведение и система начисление деталей:
             for money in self.moneys:
