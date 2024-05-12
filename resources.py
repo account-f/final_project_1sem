@@ -115,6 +115,7 @@ def define_sounds(game):
     game.airstrike_inbound = arcade.load_sound("sounds/airstrike inbound.mp3", False)
     game.blast = arcade.load_sound("sounds/blast.mp3", False)
     game.radar = arcade.load_sound("sounds/radar.mp3", False)
+    game.lore_sound = arcade.load_sound("sounds/Dark Tension Rising Music.mp3", False)
     game.ricochet = [0] * 2
     game.ricochet[0] = arcade.load_sound("sounds/ricochet1.mp3", False)
     game.ricochet[1] = arcade.load_sound("sounds/ricochet2.mp3", False)

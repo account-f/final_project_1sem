@@ -51,6 +51,8 @@ class MyGame(arcade.Window):
         self.game_over = False
         arcade.set_background_color(arcade.color.ARSENIC)
 
+        self.current_player = None
+
         resources.define_all(self)
 
         # инициализация фона и установка его координат:
@@ -88,7 +90,7 @@ class MyGame(arcade.Window):
     def setup(self):
         """ Настройка игры и инициализация переменных """
         # фоновая музыка:
-        arcade.play_sound(self.main_sound, volume=0.5, looping=True)
+#        arcade.play_sound(self.main_sound, volume=0.5, looping=True)
 
         # инициализация главного холма (с записью его расположения на экране и помещением в список objects):
         pillbox = arcade.Sprite("pictures/pillbox.png")
@@ -229,12 +231,16 @@ class MyGame(arcade.Window):
         if gamemode == "lore":
             self.lore.update()
             for lore in self.lore:
-                lore.time += 1
                 if lore.time == 1:
                     arcade.play_sound(self.thunder)
+                    self.current_player = self.lore_sound.play(speed=0.8)
                 elif lore.time == const.lore_time:
                     gamemode = "started"
                     self.trash.append(lore)
+                    arcade.stop_sound(self.current_player)
+                    self.current_player = self.main_sound.play(volume=0.5, loop=True)
+
+                lore.time += 1
 
         elif not self.game_over and gamemode == "started" and not self.pause:
 
@@ -466,7 +472,9 @@ class MyGame(arcade.Window):
                     # замена картинки холма при достижении нулевого HP игроком:
                     object.texture = arcade.load_texture("pictures/pillbox_destructed.png")
                     object.hp = 0
-                    arcade.play_sound(self.end_of_game, volume=0.7)
+                    arcade.play_sound(self.thunder)
+                    self.screen_text("HUMANITY WAS EXCLUDED FROM EXISTENCE." \
+                                     "\n\nSERVITUS HAS BECOME\nTHE ONLY FORM OF LIFE ON THE EARTH.")
                     self.game_over = True
                     print("Your score: ", self.score)
 
@@ -679,7 +687,7 @@ class MyGame(arcade.Window):
 
         elif gamemode == "lore":
             if symbol == arcade.key.SPACE:
-                gamemode = "started"
+                self.lore[0].time = const.lore_time
 
     def create_lore(self):
         """
