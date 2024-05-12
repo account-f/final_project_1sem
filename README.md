@@ -1,13 +1,20 @@
-# final_project_1sem
-#Для установки установите Python с официального сайта https://www.python.org/downloads/, склонируйте репозиторий к себе на устройство, перейдите в склонированный репозиторий и запустите файл main.py
+#The Last Stand
 
-#Старт игры при выборе опции "start" в главном меню.
-#Вращение турели на 360 градусов при помощи мыши, стрельба по нажатию "ЛКМ".
-#Задача игрока - выжить как можно дольше с помощью улучшающейся пушки и дота под натиском постоянно увеличивающегося количества врагов.
-#При уничтожении надвигающихся враждебных танкеток, а также воздушных перехватчиков игрок повышает общий счет, то бишь количество очков,
-заработанное с убийств противника. Из некоторых выпадают детали, собираемые при наведении на них мышью. При сборе более чем 10 деталей
-становится доступной возможность "хила" по нажатии на клавишу "H".
-#Спустя заданные промежутки времени происходит автоматический "апгрейд" турели.
-#Поражение игрока в связи с уменьшением числа "ХП" турели до нуля сопровождается анимацией ее разрушения, фиксацией финального числа заработанных очков.
-#Выход из игры возможен как при выборе опции "quit" в главном меню, так и при непосредственном закрытии диалогового окна.
-#Желаем приятной игры!
+#How to play:
+# 1. Install Python from official site: https://www.python.org/downloads/
+# 2. Clone the whole repository on your device
+# 3. Launch the "main.py" file in your cloned repository.
+
+#Start game after pressing start button in the menu.
+#Mouse control turret, left mouse button for shoot.
+#Player's mission is to survive as long as possible under onslaught of robots, controlled by AI.
+#Tankettes, copters and other vehicles drop details, which can be used to heal by pressing H button.
+#Player's and enemy's abilities are constantly growing.
+#To quit the game, press X button on the window, or quit button in the menu.
+
+#Good luck, Player.
+
+#Main background music by Thomas Bergersen
+#Sounds from old flashgames: Strike force heroes, Robotic emergence
+#Desert background by pukahuna
+#Other pixel art by myself

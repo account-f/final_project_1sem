@@ -1,7 +1,7 @@
 # экран:
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 800
-SCREEN_TITLE = "Turret"
+SCREEN_TITLE = "The Last Stand"
 mouse_x = 0
 mouse_y = 0
 GROUND = 80  # высота земли и характерное расстояние от краёв экрана
