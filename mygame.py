@@ -233,7 +233,7 @@ class MyGame(arcade.Window):
             for lore in self.lore:
                 if lore.time == 1:
                     arcade.play_sound(self.thunder)
-                    self.current_player = self.lore_sound.play(speed=0.8)
+                    self.current_player = self.lore_sound.play(speed=0.85)
                 elif lore.time == const.lore_time:
                     gamemode = "started"
                     self.trash.append(lore)
