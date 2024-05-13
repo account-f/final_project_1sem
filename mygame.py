@@ -1187,8 +1187,7 @@ class MyGame(arcade.Window):
                                 self.ground_lateral_weapons[0].texture = arcade.load_texture("pictures/lateral_weapons_modernized.png")
                                 self.lateral_weapons_damage_modifier = 2
                                 self.screen_text("AUGMENTED PILLBOX!"
-                                                 "\n\nMAXIMUM HP. GROUND WEAPONS DAMAGE HAS BEEN DOUBLED."
-                                                 "\n\nKEEP")
+                                                 "\n\nMAXIMUM HP. GROUND WEAPONS DAMAGE HAS BEEN DOUBLED.")
                             elif upgrade == 1:
                                 for gun in self.player_autoguns:
                                     gun.texture = arcade.load_texture("pictures/minigun.png")
