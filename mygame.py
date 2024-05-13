@@ -1088,7 +1088,7 @@ class MyGame(arcade.Window):
                 lateral_weapons.rate = 1 / const.FPS
                 lateral_weapons.recharge_time = 30
                 self.ground_lateral_weapons.append(lateral_weapons)
-                self.screen_text("WEAPONS UPGRADED!\n\nAUTOMATIC GROUND WEAPONS INSTALLED")
+                self.screen_text("WEAPONS UPGRADED!\n\nAUTOMATIC GROUND WEAPONS WILL SUSTAIN DEFENCE")
             elif upgrade == 1:
                 shield = arcade.Sprite("pictures/shield.png")
                 shield.center_x = self.objects[0].center_x
@@ -1117,7 +1117,7 @@ class MyGame(arcade.Window):
                 if upgrade == 0:
                     self.enable_gun_switching = True
                     self.screen_text("THE WEAPON ARSENAL REPLENISHED!\n\n"
-                                     "1 TO CHOOSE THE ENERGY TURRET\n"
+                                     "1 TO CHOOSE THE POWERFUL ENERGY TURRET\n"
                                      "2 TO CHOOSE THE PRECISE MINIGUN\n"
                                      "0 TO RETURN TO THE COMMON CANNON")
                 if upgrade == 1:
@@ -1154,15 +1154,16 @@ class MyGame(arcade.Window):
                                          "\n\nPRESS A TO CALL AN AIRSTRIKE")
                     elif upgrade == 1:
                         self.airmines = True
-                        self.screen_text("TERROR OF COPTERS!"
-                                         "\n\nYOU GOT A FACTORY OF AUTOMATIC AIRMINES WORKING ON ELECTROMAGNETIC POWER"
+                        self.screen_text("TERROR OF AVIATION!"
+                                         "\n\nYOU GOT A FACTORY OF AIRMINES STAYING AFLOAT"
+                                         "\nDUE TO ELECTROMAGNETIC POWER"
                                          "\n\nOPERATING SYSTEM IS BASED ON RUINS OF GLOBAL IOT")
                     elif upgrade == 2:
                         self.airguns = True
                         self.airguns_spawn()
-                        self.screen_text("AUTOMATIC GUIDANCE WEAPONS!"
-                                         "\n\nADVANCED BATTLE CHIPS WITH COMPUTER VISION"
-                                         "\nPROVIDES COMPREHENSIVE PROTECTION")
+                        self.screen_text("AUTOMATIC GUIDANCE WEAPONS HAVE BEEN IMPLEMENTED!"
+                                         "\n\nADVANCED VISUAL SENSORS WITH COMPUTER VISION"
+                                         "\nPROVIDE COMPREHENSIVE PROTECTION")
                 else:
                     if const.chromium_upgrade == 0:
                         const.chromium_upgrade = 1
@@ -1186,7 +1187,8 @@ class MyGame(arcade.Window):
                                 self.ground_lateral_weapons[0].texture = arcade.load_texture("pictures/lateral_weapons_modernized.png")
                                 self.lateral_weapons_damage_modifier = 2
                                 self.screen_text("AUGMENTED PILLBOX!"
-                                                 "\n\nMAXIMUM HP. GROUND WEAPONS DAMAGE HAS BEEN DOUBLED")
+                                                 "\n\nMAXIMUM HP. GROUND WEAPONS DAMAGE HAS BEEN DOUBLED."
+                                                 "\n\nKEEP")
                             elif upgrade == 1:
                                 for gun in self.player_autoguns:
                                     gun.texture = arcade.load_texture("pictures/minigun.png")
@@ -1198,7 +1200,7 @@ class MyGame(arcade.Window):
                             elif upgrade == 2:
                                 self.airstrike_rockets = 8
                                 self.screen_text("ACCESS TO HELLISH BOMBARDMENT!"
-                                                 "\n\nAIRSTRIKE NOW CONTAINS 8 ROCKETS")
+                                                 "\n\nAIRSTRIKE NOW CONTAINS 8 ROCKETS AND ELIMINATES MORE ROBOTS")
                             elif upgrade == 3:
                                 self.coin_magnet = True
                                 self.screen_text("MAGNET ENABLED!"
@@ -1207,7 +1209,7 @@ class MyGame(arcade.Window):
                             if const.final_words == 0:
                                 const.final_words = 1
                                 self.screen_text("MAXIMUM ADVANCES. KEEP FIGHT PERSISTENTLY"
-                                                 "\n\nHOLD SERVITUS AS LONG AS POSSIBLE")
+                                                 "\n\nHOLD ONSLAUGHT OF THE SERVITUS AS LONG AS POSSIBLE")
                                 arcade.play_sound(self.thunder)
                                 self.pause = True
 
